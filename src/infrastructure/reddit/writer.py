@@ -1,0 +1,106 @@
+"""Async Reddit writer for write operations."""
+
+import asyncpraw
+from asyncpraw.reddit import Reddit
+
+from src.domain.value_objects import CommentId
+from src.common.logging import get_logger
+from src.common.exceptions import RedditAPIError
+from src.common.retry import retry_on_api_error, retry_on_rate_limit
+from src.config.settings import RedditSettings
+
+logger = get_logger(__name__)
+
+
+class RedditWriter:
+    """
+    Async Reddit writer for write operations (posting comments).
+
+    Requires full authentication (username + password).
+    """
+
+    def __init__(self, settings: RedditSettings):
+        self.settings = settings
+        self.reddit: Reddit | None = None
+        self.is_authenticated = False
+
+    async def __aenter__(self) -> "RedditWriter":
+        """Async context manager entry."""
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.close()
+
+    async def connect(self) -> None:
+        """Initialize and authenticate the Reddit client."""
+        try:
+            if not self.settings.username or not self.settings.password:
+                raise RedditAPIError(
+                    "Reddit username and password required for write operations"
+                )
+
+            logger.info("reddit_writer.connecting", username=self.settings.username)
+
+            self.reddit = asyncpraw.Reddit(
+                client_id=self.settings.client_id,
+                client_secret=self.settings.client_secret.get_secret_value(),
+                user_agent=self.settings.user_agent or "reddit-enhancer:v0.2.0",
+                username=self.settings.username,
+                password=self.settings.password.get_secret_value(),
+            )
+
+            # Verify authentication
+            user = await self.reddit.user.me()
+            self.is_authenticated = True
+
+            logger.info("reddit_writer.connected", username=user.name)
+
+        except Exception as e:
+            logger.error("reddit_writer.connection_failed", error=str(e))
+            self.is_authenticated = False
+            raise RedditAPIError(f"Failed to authenticate with Reddit: {e}") from e
+
+    async def close(self) -> None:
+        """Close the Reddit client."""
+        if self.reddit:
+            await self.reddit.close()
+            logger.info("reddit_writer.closed")
+
+    @retry_on_api_error(max_attempts=3)
+    @retry_on_rate_limit(max_attempts=5)
+    async def post_comment(self, post_id: str, text: str) -> CommentId | None:
+        """
+        Post a comment to a Reddit post.
+
+        Args:
+            post_id: Reddit post ID
+            text: Comment text
+
+        Returns:
+            Comment ID if successful, None otherwise
+
+        Raises:
+            RedditAPIError: If posting fails
+        """
+        if not self.reddit or not self.is_authenticated:
+            raise RedditAPIError("Reddit writer not authenticated")
+
+        try:
+            logger.info(
+                "reddit_writer.posting_comment",
+                post_id=post_id,
+                comment_length=len(text),
+            )
+
+            submission = await self.reddit.submission(id=post_id)
+            comment = await submission.reply(text)
+
+            logger.info("reddit_writer.comment_posted", comment_id=comment.id, post_id=post_id)
+            return CommentId(comment.id)
+
+        except Exception as e:
+            logger.error("reddit_writer.post_failed", post_id=post_id, error=str(e))
+            raise RedditAPIError(f"Failed to post comment: {e}") from e
+
