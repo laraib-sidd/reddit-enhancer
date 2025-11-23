@@ -9,7 +9,7 @@ REDDIT_API_RATE_LIMIT = 60  # requests per minute
 REDDIT_USER_AGENT_FORMAT = "python:{app}:v{version} (by /u/{username})"
 
 # AI Generation
-DEFAULT_AI_MODEL = "claude-3-5-sonnet-latest"
+DEFAULT_AI_MODEL = "claude-sonnet-4-5-20250929"  # Latest Claude Sonnet 4.5 (Sept 2025)
 MAX_COMMENT_TOKENS = 300
 AI_TEMPERATURE = 0.7
 

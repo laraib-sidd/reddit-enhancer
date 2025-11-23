@@ -57,23 +57,23 @@ class AISettings(BaseSettings):
     anthropic_api_key: SecretStr = Field(
         ..., description="Anthropic API key", validation_alias="ANTHROPIC_API_KEY"
     )
-    model: str = Field(
-        default=DEFAULT_AI_MODEL,
-        description="AI model to use",
-        validation_alias="AI_MODEL",
-    )
-    max_tokens: int = Field(
-        default=300,
-        description="Maximum tokens for generation",
-        validation_alias="AI_MAX_TOKENS",
-    )
-    temperature: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=1.0,
-        description="AI temperature",
-        validation_alias="AI_TEMPERATURE",
-    )
+    
+    @property
+    def model(self) -> str:
+        """Get the AI model from constants (not configurable via env)."""
+        return DEFAULT_AI_MODEL
+    
+    @property
+    def max_tokens(self) -> int:
+        """Get max tokens from constants."""
+        from src.config.constants import MAX_COMMENT_TOKENS
+        return MAX_COMMENT_TOKENS
+    
+    @property
+    def temperature(self) -> float:
+        """Get temperature from constants."""
+        from src.config.constants import AI_TEMPERATURE
+        return AI_TEMPERATURE
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
