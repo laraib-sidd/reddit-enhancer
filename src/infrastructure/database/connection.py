@@ -38,17 +38,39 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         try:
             settings = get_settings()
-            db_url = settings.database.async_url
+            db_url = settings.db_async_url
 
-            logger.info("database.creating_engine", url=db_url.split("@")[0])  # Log without credentials
+            # Mask password in URL for logging
+            safe_url = db_url
+            if "@" in db_url:
+                # Format: postgresql+asyncpg://user:password@host/db
+                parts = db_url.split("://", 1)
+                if len(parts) == 2:
+                    protocol = parts[0]
+                    rest = parts[1]
+                    if "@" in rest:
+                        credentials, host_part = rest.split("@", 1)
+                        if ":" in credentials:
+                            username = credentials.split(":")[0]
+                            safe_url = f"{protocol}://{username}:****@{host_part}"
 
+            logger.info("database.creating_engine", url=safe_url)
+
+            # Supabase uses pgbouncer which doesn't support prepared statements
+            # We need to disable them for compatibility
             _engine = create_async_engine(
                 db_url,
                 pool_size=DB_POOL_SIZE,
                 max_overflow=DB_MAX_OVERFLOW,
                 pool_timeout=DB_POOL_TIMEOUT,
                 pool_pre_ping=True,  # Verify connections before using
-                echo=not settings.is_production,  # SQL logging in dev
+                echo=False,  # Disable SQL logging (too verbose)
+                connect_args={
+                    "server_settings": {
+                        "jit": "off",  # Disable JIT for pgbouncer
+                    },
+                    "statement_cache_size": 0,  # Disable prepared statements
+                },
             )
         except Exception as e:
             logger.error("database.engine_creation_failed", error=str(e))
@@ -111,19 +133,30 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """
-    Initialize database - create all tables.
+    Initialize database - create schema and all tables with indexes.
 
     This should be called at application startup.
     """
     from src.infrastructure.database.models import Base
+    from src.config.constants import DB_SCHEMA_NAME
+    from sqlalchemy import text
 
     engine = get_engine()
 
     try:
-        logger.info("database.initializing")
+        logger.info("database.initializing", schema=DB_SCHEMA_NAME)
+        
         async with engine.begin() as conn:
+            # Create schema if it doesn't exist
+            await conn.execute(
+                text(f"CREATE SCHEMA IF NOT EXISTS {DB_SCHEMA_NAME}")
+            )
+            logger.info("database.schema_created", schema=DB_SCHEMA_NAME)
+            
+            # Create all tables with indexes
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("database.initialized")
+            
+        logger.info("database.initialized", schema=DB_SCHEMA_NAME)
     except Exception as e:
         logger.error("database.initialization_failed", error=str(e))
         raise DatabaseError(f"Failed to initialize database: {e}") from e

@@ -7,7 +7,6 @@ from src.domain.value_objects import CommentId
 from src.common.logging import get_logger
 from src.common.exceptions import RedditAPIError
 from src.common.retry import retry_on_api_error, retry_on_rate_limit
-from src.config.settings import RedditSettings
 
 logger = get_logger(__name__)
 
@@ -19,8 +18,19 @@ class RedditWriter:
     Requires full authentication (username + password).
     """
 
-    def __init__(self, settings: RedditSettings):
-        self.settings = settings
+    def __init__(
+        self, 
+        client_id: str, 
+        client_secret: str, 
+        username: str | None, 
+        password: str | None,
+        user_agent: str | None = None
+    ):
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.username = username
+        self.password = password
+        self.user_agent = user_agent or "reddit-enhancer:v0.2.0"
         self.reddit: Reddit | None = None
         self.is_authenticated = False
 
@@ -36,19 +46,19 @@ class RedditWriter:
     async def connect(self) -> None:
         """Initialize and authenticate the Reddit client."""
         try:
-            if not self.settings.username or not self.settings.password:
+            if not self.username or not self.password:
                 raise RedditAPIError(
                     "Reddit username and password required for write operations"
                 )
 
-            logger.info("reddit_writer.connecting", username=self.settings.username)
+            logger.info("reddit_writer.connecting", username=self.username)
 
             self.reddit = asyncpraw.Reddit(
-                client_id=self.settings.client_id,
-                client_secret=self.settings.client_secret.get_secret_value(),
-                user_agent=self.settings.user_agent or "reddit-enhancer:v0.2.0",
-                username=self.settings.username,
-                password=self.settings.password.get_secret_value(),
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                user_agent=self.user_agent,
+                username=self.username,
+                password=self.password,
             )
 
             # Verify authentication

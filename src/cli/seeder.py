@@ -26,15 +26,19 @@ async def seed_patterns():
     # Initialize database
     await init_db()
 
-    # Initialize Reddit reader
-    reddit_reader = RedditReader(settings.reddit)
+    # Initialize Reddit reader with individual settings
+    reddit_reader = RedditReader(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret.get_secret_value(),
+        user_agent=settings.reddit_user_agent,
+    )
     await reddit_reader.connect()
 
     try:
         total_added = 0
 
         for subreddit in track(
-            settings.bot.target_subreddits,
+            settings.subreddits_list,
             description="Processing subreddits..."
         ):
             console.print(f"\n[cyan]Fetching from r/{subreddit}...[/cyan]")

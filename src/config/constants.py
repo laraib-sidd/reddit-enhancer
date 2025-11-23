@@ -14,6 +14,7 @@ MAX_COMMENT_TOKENS = 300
 AI_TEMPERATURE = 0.7
 
 # Database
+DB_SCHEMA_NAME = "reddit_bot"  # Custom schema for all tables
 DB_POOL_SIZE = 5
 DB_MAX_OVERFLOW = 10
 DB_POOL_TIMEOUT = 30

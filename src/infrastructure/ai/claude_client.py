@@ -8,7 +8,7 @@ from src.common.logging import get_logger
 from src.common.exceptions import AIGenerationError
 from src.common.retry import retry_on_api_error
 from src.common.circuit_breaker import with_circuit_breaker
-from src.config.settings import AISettings
+from src.config.constants import DEFAULT_AI_MODEL, MAX_COMMENT_TOKENS, AI_TEMPERATURE
 
 logger = get_logger(__name__)
 
@@ -20,11 +20,12 @@ class ClaudeClient:
     Includes retry logic and circuit breaker for resilience.
     """
 
-    def __init__(self, settings: AISettings):
-        self.settings = settings
-        self.client = AsyncAnthropic(
-            api_key=settings.anthropic_api_key.get_secret_value()
-        )
+    def __init__(self, api_key: str, model: str | None = None, max_tokens: int | None = None, temperature: float | None = None):
+        self.api_key = api_key
+        self.model = model or DEFAULT_AI_MODEL
+        self.max_tokens = max_tokens or MAX_COMMENT_TOKENS
+        self.temperature = temperature or AI_TEMPERATURE
+        self.client = AsyncAnthropic(api_key=api_key)
         self.prompt_builder = PromptBuilder()
 
     @retry_on_api_error(max_attempts=3)
@@ -61,9 +62,9 @@ class ClaudeClient:
 
             # Call Claude API
             message = await self.client.messages.create(
-                model=self.settings.model,
-                max_tokens=self.settings.max_tokens,
-                temperature=self.settings.temperature,
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
             )

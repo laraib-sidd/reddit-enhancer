@@ -8,8 +8,6 @@ from src.domain.value_objects import PostId, SubredditName, PostTitle, Score
 from src.common.logging import get_logger
 from src.common.exceptions import RedditAPIError
 from src.common.retry import retry_on_api_error, retry_on_rate_limit
-from src.config.settings import RedditSettings
-
 logger = get_logger(__name__)
 
 
@@ -20,8 +18,10 @@ class RedditReader:
     Does not require username/password - only client_id and client_secret.
     """
 
-    def __init__(self, settings: RedditSettings):
-        self.settings = settings
+    def __init__(self, client_id: str, client_secret: str, user_agent: str | None = None):
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.user_agent = user_agent or "reddit-enhancer:v0.2.0"
         self.reddit: Reddit | None = None
 
     async def __aenter__(self) -> "RedditReader":
@@ -39,9 +39,9 @@ class RedditReader:
             logger.info("reddit_reader.connecting")
 
             self.reddit = asyncpraw.Reddit(
-                client_id=self.settings.client_id,
-                client_secret=self.settings.client_secret.get_secret_value(),
-                user_agent=self.settings.user_agent or "reddit-enhancer:v0.2.0",
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                user_agent=self.user_agent,
             )
 
             # Verify read-only mode
@@ -127,19 +127,46 @@ class RedditReader:
             patterns = []
             sub: Subreddit = await self.reddit.subreddit(subreddit)
 
-            async for submission in sub.top(time_filter="month", limit=limit):
+            # Use 'hot' instead of 'top' - hot posts have better comment loading
+            async for submission in sub.hot(limit=limit):
                 # Get top comments from each submission
-                await submission.comments.replace_more(limit=0)
-
-                for comment in submission.comments[:3]:  # Top 3 comments per post
-                    if hasattr(comment, "body") and hasattr(comment, "score"):
-                        pattern = SuccessfulPattern(
-                            id=None,
-                            pattern_text=comment.body,
-                            subreddit=SubredditName(subreddit),
-                            score=Score(comment.score),
-                        )
-                        patterns.append(pattern)
+                try:
+                    # Expand comments by replacing "load more" placeholders
+                    await submission.load()
+                    await submission.comments.replace_more(limit=0)
+                    
+                    # Iterate through the comment forest safely
+                    count = 0
+                    try:
+                        for top_level_comment in submission.comments:
+                            if count >= 3:  # Only top 3 comments per post
+                                break
+                            
+                            # Check if this is a valid comment (not MoreComments)
+                            if (hasattr(top_level_comment, "body") and 
+                                hasattr(top_level_comment, "score") and 
+                                top_level_comment.body and 
+                                len(top_level_comment.body.strip()) > 10):
+                                
+                                pattern = SuccessfulPattern(
+                                    id=None,
+                                    pattern_text=top_level_comment.body,
+                                    subreddit=SubredditName(subreddit),
+                                    score=Score(top_level_comment.score),
+                                )
+                                patterns.append(pattern)
+                                count += 1
+                    except TypeError:
+                        # Comments might be None or not iterable
+                        logger.warning("reddit_reader.comments_not_available", 
+                                       submission_id=submission.id)
+                        continue
+                        
+                except Exception as comment_error:
+                    logger.warning("reddit_reader.comment_fetch_error", 
+                                   submission_id=submission.id, 
+                                   error=str(comment_error))
+                    continue
 
             logger.info("reddit_reader.fetched_patterns", count=len(patterns))
             return patterns

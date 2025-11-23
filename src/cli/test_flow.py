@@ -30,13 +30,13 @@ async def run_test():
     reddit_client = MockRedditClient()
 
     # Initialize real AI client
-    ai_client = ClaudeClient(settings.ai)
+    ai_client = ClaudeClient(settings.anthropic_api_key.get_secret_value())
 
     try:
         # Fetch mock posts
         console.print("[cyan]1. Fetching mock Reddit posts...[/cyan]")
         posts = await reddit_client.get_rising_posts(
-            settings.bot.target_subreddits, limit=3
+            settings.subreddits_list, limit=3
         )
 
         console.print(f"[green]✓ Found {len(posts)} mock posts[/green]\n")

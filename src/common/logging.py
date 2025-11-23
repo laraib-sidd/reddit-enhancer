@@ -21,6 +21,14 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = False) -> None:
         stream=sys.stdout,
         level=getattr(logging, log_level.upper()),
     )
+    
+    # Silence noisy third-party loggers
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+    logging.getLogger("asyncpraw").setLevel(logging.WARNING)
+    logging.getLogger("prawcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     # Configure structlog processors
     processors = [

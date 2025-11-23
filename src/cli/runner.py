@@ -38,10 +38,20 @@ async def run_manual_mode():
     await init_db()
 
     # Initialize services
-    reddit_reader = RedditReader(settings.reddit)
+    reddit_reader = RedditReader(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret.get_secret_value(),
+        user_agent=settings.reddit_user_agent,
+    )
     await reddit_reader.connect()
 
-    reddit_writer = RedditWriter(settings.reddit)
+    reddit_writer = RedditWriter(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret.get_secret_value(),
+        username=settings.reddit_username,
+        password=settings.reddit_password.get_secret_value() if settings.reddit_password else None,
+        user_agent=settings.reddit_user_agent,
+    )
     try:
         await reddit_writer.connect()
         console.print("[green]✓ Reddit writer authenticated[/green]")
@@ -49,9 +59,12 @@ async def run_manual_mode():
         console.print(f"[yellow]⚠️  Reddit writer not available: {e}[/yellow]")
         console.print("[yellow]You can generate comments but not post them.[/yellow]")
 
-    ai_client = ClaudeClient(settings.ai)
+    ai_client = ClaudeClient(settings.anthropic_api_key.get_secret_value())
 
-    telegram_bot = TelegramBotHandler(settings.telegram)
+    telegram_bot = TelegramBotHandler(
+        bot_token=settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else "",
+        chat_id=settings.telegram_chat_id or "",
+    )
     await telegram_bot.connect()
 
     try:
@@ -70,7 +83,7 @@ async def run_manual_mode():
 
                 # Scan for posts
                 all_posts, new_posts = await scan_use_case.execute(
-                    settings.bot.target_subreddits, limit=5
+                    settings.subreddits_list, limit=5
                 )
 
                 if not new_posts:
@@ -156,7 +169,7 @@ async def run_auto_mode():
 
                 # Scan for posts
                 all_posts, new_posts = await scan_use_case.execute(
-                    settings.bot.target_subreddits, limit=3
+                    settings.subreddits_list, limit=3
                 )
 
                 if not new_posts:
@@ -171,7 +184,7 @@ async def run_auto_mode():
                         await comment_repo.save(comment)
 
                         # Random delay before posting
-                        delay = random.randint(settings.bot.min_delay, settings.bot.max_delay)
+                        delay = random.randint(settings.mode_delay_min, settings.mode_delay_max)
                         console.print(f"[dim]Waiting {delay/60:.1f} minutes before posting...[/dim]")
                         await asyncio.sleep(delay)
 

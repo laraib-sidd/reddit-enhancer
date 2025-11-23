@@ -64,7 +64,7 @@ def manual():
     settings = get_settings()
     configure_logging(settings.log_level, settings.json_logs)
 
-    if not settings.telegram.is_configured:
+    if not settings.telegram_is_configured:
         console.print(
             "[bold red]Error: Telegram not configured. "
             "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env[/bold red]"
