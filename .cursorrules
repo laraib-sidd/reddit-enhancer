@@ -145,12 +145,14 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 - SQLAlchemy models in `src/infrastructure/database/models.py`
 - Domain entities in `src/domain/entities.py` (NO SQLAlchemy imports!)
 - Repository pattern for all database access
+- Use Alembic for schema migrations (NOT `create_all()`)
 
 ### Indexes
 - **ALWAYS** add indexes for:
   - Foreign keys
   - Frequently queried columns
   - Composite queries (e.g., `subreddit + created_at`)
+  - Full-text search columns (GIN index)
 - Example:
   ```python
   Index("ix_posts_subreddit_created", "subreddit", "created_at")
@@ -160,6 +162,26 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 - Use async context managers: `async with get_session() as session:`
 - **NEVER** reuse sessions across requests
 - Commit explicitly: `await session.commit()`
+- Use retry logic for transient connection errors
+
+### Performance Best Practices
+- Use batch operations for bulk inserts (`bulk_insert_mappings`)
+- Add query performance monitoring (log queries >100ms)
+- Use connection pooling (already configured)
+- Consider caching for read-heavy operations (Redis)
+- Monitor connection pool health
+
+### Data Integrity
+- Add CHECK constraints for validation at DB level
+- Use soft deletes (`deleted_at`) instead of hard deletes
+- Add audit timestamps (`created_at`, `updated_at`)
+- Validate data with Pydantic BEFORE saving to DB
+
+### Migrations (Alembic)
+- **NEVER** use `Base.metadata.create_all()` in production
+- Create migrations for all schema changes: `alembic revision --autogenerate`
+- Test migrations in dev before applying to production
+- Keep migration files in version control
 
 ## 🚀 Performance
 
