@@ -339,6 +339,7 @@ class SQLAlchemyPostRepository:
 
 ## 📚 Required Reading
 - `internal_docs/ARCHITECTURE_REVIEW.md` - Architecture overview
+- `internal_docs/DATABASE_IMPROVEMENTS.md` - Database optimization roadmap
 - `internal_docs/QUICK_START.md` - Development setup
 - `internal_docs/TESTING_GUIDE.md` - Testing standards
 - `README.md` - Project overview and usage
