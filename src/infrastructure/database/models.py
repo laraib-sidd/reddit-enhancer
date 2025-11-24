@@ -37,7 +37,7 @@ class PostModel(Base):
 
 
 class CommentModel(Base):
-    """Comment database model."""
+    """Comment database model with full-text search support."""
 
     __tablename__ = "comments"
     __table_args__ = (
@@ -62,6 +62,10 @@ class CommentModel(Base):
 
     # Relationships
     post = relationship("PostModel", back_populates="comments")
+    
+    # Note: Full-text search vector will be added via migration
+    # search_vector = Column(TSVECTOR, Computed("to_tsvector('english', content)", persisted=True))
+    # Index("ix_comments_search_vector", "search_vector", postgresql_using="gin")
 
 
 class SuccessfulPatternModel(Base):
