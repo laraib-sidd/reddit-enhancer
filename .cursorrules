@@ -239,7 +239,14 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 4. Update documentation if needed
 5. Update tests if behavior changed
 
-### Git Commits
+### Git Workflow
+- **ALWAYS** create Pull Requests (PRs) for all changes
+- **NEVER** commit directly to main branch
+- Create feature branches: `git checkout -b feat/your-feature`
+- Push to remote: `git push -u origin feat/your-feature`
+- Create PR on GitHub with description
+
+### Git Commits (on feature branches)
 - Use descriptive commit messages
 - Format: `type(scope): description`
 - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
@@ -250,6 +257,8 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 - Include tests for new features
 - Update documentation
 - Add screenshots/examples if applicable
+- Link related issues if any
+- Request review before merging
 
 ## 🚨 What NOT to Do
 
