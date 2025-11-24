@@ -1,10 +1,11 @@
 """Seeder for populating database with successful patterns."""
 
+import os
 from rich.console import Console
-from rich.progress import track
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from src.config.settings import get_settings
-from src.common.logging import get_logger
+from src.common.logging import get_logger, configure_logging
 from src.infrastructure.reddit.reader import RedditReader
 from src.infrastructure.database.connection import get_session, init_db
 from src.infrastructure.database.repositories import SQLAlchemyPatternRepository
@@ -19,14 +20,17 @@ async def seed_patterns():
 
     Fetches top comments from target subreddits to learn from.
     """
+    # Suppress all logs during seeding for clean output
+    configure_logging(log_level="ERROR", json_logs=False)
+    
     settings = get_settings()
 
-    console.print("[bold blue]Seeding successful patterns...[/bold blue]\n")
+    console.print("\n[bold blue]🌱 Seeding Successful Patterns[/bold blue]\n")
 
-    # Initialize database
+    # Initialize database silently
     await init_db()
 
-    # Initialize Reddit reader with individual settings
+    # Initialize Reddit reader
     reddit_reader = RedditReader(
         client_id=settings.reddit_client_id,
         client_secret=settings.reddit_client_secret.get_secret_value(),
@@ -36,31 +40,51 @@ async def seed_patterns():
 
     try:
         total_added = 0
+        total_skipped = 0
+        subreddits = settings.subreddits_list
 
-        for subreddit in track(
-            settings.subreddits_list,
-            description="Processing subreddits..."
-        ):
-            console.print(f"\n[cyan]Fetching from r/{subreddit}...[/cyan]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            console=console,
+        ) as progress:
+            
+            main_task = progress.add_task(
+                "[cyan]Processing subreddits...", 
+                total=len(subreddits)
+            )
 
-            # Fetch top comments
-            patterns = await reddit_reader.get_top_comments(subreddit, limit=20)
+            for subreddit in subreddits:
+                progress.update(main_task, description=f"[cyan]Fetching r/{subreddit}...")
 
-            async with get_session() as session:
-                pattern_repo = SQLAlchemyPatternRepository(session)
+                # Fetch top comments
+                patterns = await reddit_reader.get_top_comments(subreddit, limit=20)
 
-                # Save patterns
-                for pattern in patterns:
-                    # Check if exists
-                    exists = await pattern_repo.exists(pattern.pattern_text)
+                async with get_session() as session:
+                    pattern_repo = SQLAlchemyPatternRepository(session)
 
-                    if not exists:
-                        await pattern_repo.save(pattern)
-                        total_added += 1
+                    # Save patterns
+                    for pattern in patterns:
+                        exists = await pattern_repo.exists(pattern.pattern_text)
 
-            console.print(f"[green]✓ Added patterns from r/{subreddit}[/green]")
+                        if not exists:
+                            await pattern_repo.save(pattern)
+                            total_added += 1
+                        else:
+                            total_skipped += 1
 
-        console.print(f"\n[bold green]✓ Seeding complete! Added {total_added} new patterns.[/bold green]")
+                progress.advance(main_task)
+                console.print(f"  [green]✓[/green] r/{subreddit}: {len(patterns)} patterns fetched")
+
+        # Summary
+        console.print("\n" + "─" * 60)
+        console.print(f"[bold green]✓ Seeding Complete![/bold green]")
+        console.print(f"  • Added: [green]{total_added}[/green] new patterns")
+        console.print(f"  • Skipped: [yellow]{total_skipped}[/yellow] duplicates")
+        console.print(f"  • Total: [cyan]{total_added + total_skipped}[/cyan] patterns processed")
+        console.print("─" * 60 + "\n")
 
     except Exception as e:
         console.print(f"\n[bold red]✗ Error: {e}[/bold red]")

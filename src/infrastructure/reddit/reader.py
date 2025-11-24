@@ -122,7 +122,7 @@ class RedditReader:
             raise RedditAPIError("Reddit client not connected")
 
         try:
-            logger.info("reddit_reader.fetching_top_comments", subreddit=subreddit, limit=limit)
+            logger.debug("reddit_reader.fetching_top_comments", subreddit=subreddit, limit=limit)
 
             patterns = []
             sub: Subreddit = await self.reddit.subreddit(subreddit)
@@ -168,7 +168,7 @@ class RedditReader:
                                    error=str(comment_error))
                     continue
 
-            logger.info("reddit_reader.fetched_patterns", count=len(patterns))
+            logger.debug("reddit_reader.fetched_patterns", count=len(patterns))
             return patterns
 
         except Exception as e:

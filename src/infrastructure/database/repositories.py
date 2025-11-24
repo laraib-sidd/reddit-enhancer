@@ -38,7 +38,7 @@ class SQLAlchemyPostRepository:
             self.session.add(model)
             await self.session.flush()
 
-            logger.info("post.saved", post_id=post.id)
+            logger.debug("post.saved", post_id=post.id)
             return post
         except Exception as e:
             logger.error("post.save_failed", post_id=post.id, error=str(e))
@@ -240,7 +240,8 @@ class SQLAlchemyPatternRepository:
             await self.session.flush()
             pattern.id = model.id
 
-            logger.info("pattern.saved", pattern_id=pattern.id, subreddit=pattern.subreddit)
+            # Only log at debug level to avoid flooding logs during seeding
+            logger.debug("pattern.saved", pattern_id=pattern.id, subreddit=pattern.subreddit)
             return pattern
         except Exception as e:
             logger.error("pattern.save_failed", error=str(e))

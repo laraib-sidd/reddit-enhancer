@@ -1,0 +1,344 @@
+# Cursor AI Agent Rules - Reddit Enhancer Bot
+
+## 🏗️ Architecture Principles
+
+### Clean Architecture
+- **ALWAYS** follow Clean Architecture: Domain → Application → Infrastructure
+- Domain layer must NOT depend on external libraries (except dataclasses, enums)
+- Application layer orchestrates use cases, NO business logic here
+- Infrastructure layer handles external services (DB, APIs, etc.)
+- Dependencies MUST point inward (use protocols/interfaces)
+
+### Layer Structure
+```
+src/
+├── domain/          # Pure business logic (entities, value objects, services)
+├── application/     # Use cases, DTOs, interfaces
+├── infrastructure/  # External implementations (database, APIs)
+├── cli/            # Command-line interface
+├── common/         # Cross-cutting concerns (logging, errors, retry)
+└── config/         # Configuration management
+```
+
+## 💻 Code Standards
+
+### Async Everything
+- **ALL** I/O operations MUST be async (`async def`, `await`)
+- Use `asyncpraw`, `asyncpg`, `AsyncSession`, `AsyncEngine`
+- NO synchronous blocking calls in critical paths
+- Use `asyncio.gather()` for concurrent operations
+
+### Type Safety
+- **ALWAYS** use type hints for function parameters and return types
+- Use Pydantic models for data validation
+- Use value objects for domain primitives
+- Use `SecretStr` for sensitive data (passwords, API keys)
+- Example:
+  ```python
+  async def generate_comment(self, post: Post, patterns: list[SuccessfulPattern]) -> str:
+  ```
+
+### Error Handling
+- Use custom exceptions from `src/common/exceptions.py`
+- **NEVER** use bare `except:` - always catch specific exceptions
+- Add retry decorators for transient failures: `@retry_on_api_error`
+- Use circuit breaker for external API calls: `@with_circuit_breaker`
+- Example:
+  ```python
+  try:
+      result = await external_api_call()
+  except RateLimitError as e:
+      logger.warning("rate_limit_hit", retry_after=e.retry_after)
+      raise
+  except RedditAPIError as e:
+      logger.error("api_error", error=str(e))
+      raise
+  ```
+
+### Logging
+- Use structured logging with `structlog`
+- Get logger with: `logger = get_logger(__name__)`
+- Use event-based logging: `logger.info("event.name", key=value)`
+- **NEVER** log sensitive data (use masking for passwords, tokens)
+- Example:
+  ```python
+  logger.info("comment.generated", 
+              post_id=post.id, 
+              subreddit=post.subreddit,
+              length=len(comment))
+  ```
+
+### Configuration
+- **ALL** configuration goes in `src/config/settings.py` (via `.env`)
+- Constants (non-configurable) go in `src/config/constants.py`
+- Use Pydantic Settings for validation
+- **NEVER** hardcode API keys, credentials, or URLs in code
+
+## 🧪 Testing
+
+### Test Structure
+- Unit tests in `tests/unit/` (domain, application, infrastructure)
+- Integration tests in `tests/integration/`
+- Use `pytest` with `pytest-asyncio`
+- Mock external services (Reddit, AI, database) in unit tests
+
+### Test Requirements
+- **EVERY** new feature MUST have tests
+- Aim for 80%+ code coverage
+- Test happy path AND error cases
+- Use descriptive test names: `test_generate_comment_with_patterns()`
+
+### Test Example
+```python
+@pytest.mark.asyncio
+async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo):
+    # Arrange
+    use_case = GenerateCommentUseCase(mock_ai_client, mock_pattern_repo)
+    post = create_test_post()
+    
+    # Act
+    comment = await use_case.execute(post, use_patterns=True)
+    
+    # Assert
+    assert comment.status == CommentStatus.PENDING
+    mock_pattern_repo.get_by_subreddit.assert_called_once()
+```
+
+## 📝 Documentation
+
+### Docstrings
+- **ALL** public classes and functions MUST have docstrings
+- Use Google-style docstrings
+- Include examples for complex functions
+- Example:
+  ```python
+  async def generate_comment(self, post: Post, patterns: list[SuccessfulPattern]) -> str:
+      """
+      Generate an AI comment for a Reddit post.
+      
+      Args:
+          post: Reddit post to comment on
+          patterns: Historical successful comment patterns for context
+          
+      Returns:
+          Generated comment text
+          
+      Raises:
+          AIGenerationError: If comment generation fails
+          
+      Example:
+          >>> client = ClaudeClient(api_key)
+          >>> patterns = await pattern_repo.get_by_subreddit("AskReddit")
+          >>> comment = await client.generate_comment(post, patterns)
+      """
+  ```
+
+### Internal Documentation
+- **ALL** architecture docs, design decisions, guides go in `internal_docs/`
+- Keep README.md focused on usage (setup, quickstart)
+- Create separate docs for: architecture, testing, deployment, etc.
+
+## 🗃️ Database
+
+### Schema & Models
+- Use separate schema: `reddit_bot` for all tables
+- SQLAlchemy models in `src/infrastructure/database/models.py`
+- Domain entities in `src/domain/entities.py` (NO SQLAlchemy imports!)
+- Repository pattern for all database access
+
+### Indexes
+- **ALWAYS** add indexes for:
+  - Foreign keys
+  - Frequently queried columns
+  - Composite queries (e.g., `subreddit + created_at`)
+- Example:
+  ```python
+  Index("ix_posts_subreddit_created", "subreddit", "created_at")
+  ```
+
+### Async Sessions
+- Use async context managers: `async with get_session() as session:`
+- **NEVER** reuse sessions across requests
+- Commit explicitly: `await session.commit()`
+
+## 🚀 Performance
+
+### Optimization Rules
+- Use database indexes for all queries
+- Batch operations when possible (`bulk_insert_mappings`)
+- Use connection pooling (already configured)
+- Cache expensive computations (patterns, configurations)
+- Use `asyncio.gather()` for concurrent API calls
+
+### Rate Limiting
+- Respect Reddit API rate limits (60 req/min)
+- Use exponential backoff for retries
+- Add delays between automated actions (`random.uniform(min_delay, max_delay)`)
+
+## 🔒 Security
+
+### Secrets Management
+- **NEVER** commit `.env` file or API keys to Git
+- Use `SecretStr` for passwords/tokens in settings
+- Mask sensitive data in logs: `url.split("@")[0]` for connection strings
+- Validate all user inputs with Pydantic
+
+### API Security
+- Use OAuth for Reddit (client_id/secret for read, username/password for write)
+- Rotate API keys regularly
+- Use separate credentials for dev/staging/prod
+
+## 🎯 Code Quality
+
+### Naming Conventions
+- Classes: `PascalCase` (e.g., `GenerateCommentUseCase`)
+- Functions/Methods: `snake_case` (e.g., `generate_comment`)
+- Constants: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_AI_MODEL`)
+- Private methods: `_snake_case` (e.g., `_build_prompt`)
+
+### File Organization
+- One class per file (exceptions for small related classes)
+- Group related functions in modules
+- Keep files under 300 lines (refactor if larger)
+- Use `__init__.py` for exports
+
+### Code Style
+- Line length: 100 characters (configured in `pyproject.toml`)
+- Use `black` for formatting
+- Use `ruff` for linting
+- Follow PEP 8 style guide
+
+## 🔄 Development Workflow
+
+### Before Committing
+1. Run tests: `uv run pytest`
+2. Check linting: `uv run ruff check src/`
+3. Format code: `uv run black src/`
+4. Update documentation if needed
+5. Update tests if behavior changed
+
+### Git Commits
+- Use descriptive commit messages
+- Format: `type(scope): description`
+- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- Example: `feat(ai): improve comment generation to sound more human`
+
+### Pull Requests
+- One feature/fix per PR
+- Include tests for new features
+- Update documentation
+- Add screenshots/examples if applicable
+
+## 🚨 What NOT to Do
+
+❌ **NEVER** put business logic in infrastructure layer  
+❌ **NEVER** import infrastructure code in domain layer  
+❌ **NEVER** use synchronous I/O operations  
+❌ **NEVER** hardcode credentials or API keys  
+❌ **NEVER** commit without tests for new features  
+❌ **NEVER** use bare `except:` without specific exception  
+❌ **NEVER** log sensitive data (passwords, tokens)  
+❌ **NEVER** skip error handling for external API calls  
+❌ **NEVER** create circular dependencies between layers  
+❌ **NEVER** use `print()` for debugging (use `logger.debug()`)  
+
+## ✅ Best Practices
+
+### Domain Entities
+```python
+@dataclass
+class Comment:
+    """Domain entity with business logic methods."""
+    id: int | None
+    content: CommentText
+    status: CommentStatus
+    
+    def approve(self) -> None:
+        """Business logic method."""
+        self.status = CommentStatus.APPROVED
+    
+    def is_postable(self) -> bool:
+        """Business rule."""
+        return self.status in (CommentStatus.PENDING, CommentStatus.APPROVED)
+```
+
+### Use Cases
+```python
+class GenerateCommentUseCase:
+    """Application layer - orchestrates business logic."""
+    
+    def __init__(self, ai_client: IAIClient, pattern_repo: PatternRepository):
+        self.ai_client = ai_client
+        self.pattern_repo = pattern_repo
+    
+    async def execute(self, post: Post) -> Comment:
+        """Orchestrate the use case."""
+        patterns = await self.pattern_repo.get_by_subreddit(post.subreddit)
+        text = await self.ai_client.generate_comment(post, patterns)
+        return Comment(id=None, content=CommentText(text))
+```
+
+### Repository Pattern
+```python
+class SQLAlchemyPostRepository:
+    """Infrastructure layer - implements repository protocol."""
+    
+    async def get_by_id(self, post_id: PostId) -> Post | None:
+        """Fetch from database and convert to domain entity."""
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(PostModel).where(PostModel.id == post_id)
+            )
+            model = result.scalar_one_or_none()
+            return self._to_entity(model) if model else None
+```
+
+## 🎯 AI Comment Generation Guidelines
+
+### Human-like Comments
+- Use casual, conversational tone
+- Add personality (humor, empathy, relatability)
+- Include Reddit-specific elements:
+  - Lowercase casual writing
+  - Relatable anecdotes or examples
+  - Natural transitions ("honestly", "to be fair", "in my experience")
+  - Question engagement ("what about you?", "anyone else?")
+- **AVOID**:
+  - Overly formal language
+  - Perfect grammar/punctuation (be casual!)
+  - Generic corporate speak
+  - Obvious AI patterns ("As an AI", "Here's my take")
+
+### Prompt Engineering
+- Include successful patterns from the same subreddit
+- Specify tone: "casual, conversational, relatable"
+- Ask for specific length (2-4 sentences)
+- Request Reddit-style formatting when needed
+
+## 📚 Required Reading
+- `internal_docs/ARCHITECTURE_REVIEW.md` - Architecture overview
+- `internal_docs/QUICK_START.md` - Development setup
+- `internal_docs/TESTING_GUIDE.md` - Testing standards
+- `README.md` - Project overview and usage
+
+## 🔧 Tools & Commands
+
+### Development
+```bash
+uv run reddit-bot init       # Initialize database
+uv run reddit-bot test       # Test with mock data
+uv run reddit-bot seed       # Seed successful patterns
+uv run pytest               # Run tests
+uv run ruff check src/      # Lint code
+uv run black src/           # Format code
+```
+
+### Debugging
+- Use `logger.debug()` for detailed logging
+- Set `LOG_LEVEL=DEBUG` in `.env`
+- Use breakpoints with `import pdb; pdb.set_trace()` (but remove before commit!)
+
+---
+
+**Remember:** This is a production-grade application. Write code that you'd be proud to maintain in 2 years! 🚀
+
