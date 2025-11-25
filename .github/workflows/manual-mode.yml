@@ -1,9 +1,9 @@
-name: Manual Mode Bot (Every 2 Hours)
+name: Manual Mode Bot (Manual Trigger Only)
 
 on:
-  schedule:
-    # Run every 2 hours, offset by 45 minutes
-    - cron: '45 */2 * * *'
+  # schedule:
+  #   # Run every 2 hours, offset by 45 minutes
+  #   - cron: '45 */2 * * *'
   workflow_dispatch:
 
 env:
@@ -13,10 +13,7 @@ jobs:
   manual-mode:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only run if Telegram is configured
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'schedule' && vars.ENABLE_SCHEDULED_MANUAL == 'true')
+    # Runs on manual trigger only
     
     steps:
       - name: Checkout repository
