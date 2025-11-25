@@ -1,10 +1,9 @@
 """Tests for application use cases."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
-from src.domain.entities import Post, Comment, CommentStatus
-from src.domain.value_objects import PostId, SubredditName, PostTitle, CommentText, Score
+from src.domain.entities import Comment, CommentStatus
 from src.application.use_cases.generate_comment import GenerateCommentUseCase
 from src.application.use_cases.scan_posts import ScanPostsUseCase
 
@@ -113,4 +112,3 @@ class TestScanPostsUseCase:
 
         # Verify save not called for existing post
         post_repo.save.assert_not_called()
-

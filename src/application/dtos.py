@@ -59,4 +59,3 @@ class ScanPostsResponse:
 
     posts_found: int
     new_posts: int
-

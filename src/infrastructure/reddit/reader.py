@@ -8,6 +8,7 @@ from src.domain.value_objects import PostId, SubredditName, PostTitle, Score
 from src.common.logging import get_logger
 from src.common.exceptions import RedditAPIError
 from src.common.retry import retry_on_api_error, retry_on_rate_limit
+
 logger = get_logger(__name__)
 
 
@@ -134,20 +135,21 @@ class RedditReader:
                     # Expand comments by replacing "load more" placeholders
                     await submission.load()
                     await submission.comments.replace_more(limit=0)
-                    
+
                     # Iterate through the comment forest safely
                     count = 0
                     try:
                         for top_level_comment in submission.comments:
                             if count >= 3:  # Only top 3 comments per post
                                 break
-                            
+
                             # Check if this is a valid comment (not MoreComments)
-                            if (hasattr(top_level_comment, "body") and 
-                                hasattr(top_level_comment, "score") and 
-                                top_level_comment.body and 
-                                len(top_level_comment.body.strip()) > 10):
-                                
+                            if (
+                                hasattr(top_level_comment, "body")
+                                and hasattr(top_level_comment, "score")
+                                and top_level_comment.body
+                                and len(top_level_comment.body.strip()) > 10
+                            ):
                                 pattern = SuccessfulPattern(
                                     id=None,
                                     pattern_text=top_level_comment.body,
@@ -158,14 +160,17 @@ class RedditReader:
                                 count += 1
                     except TypeError:
                         # Comments might be None or not iterable
-                        logger.warning("reddit_reader.comments_not_available", 
-                                       submission_id=submission.id)
+                        logger.warning(
+                            "reddit_reader.comments_not_available", submission_id=submission.id
+                        )
                         continue
-                        
+
                 except Exception as comment_error:
-                    logger.warning("reddit_reader.comment_fetch_error", 
-                                   submission_id=submission.id, 
-                                   error=str(comment_error))
+                    logger.warning(
+                        "reddit_reader.comment_fetch_error",
+                        submission_id=submission.id,
+                        error=str(comment_error),
+                    )
                     continue
 
             logger.debug("reddit_reader.fetched_patterns", count=len(patterns))
@@ -174,4 +179,3 @@ class RedditReader:
         except Exception as e:
             logger.error("reddit_reader.fetch_comments_failed", error=str(e))
             raise RedditAPIError(f"Failed to fetch top comments: {e}") from e
-

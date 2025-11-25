@@ -20,7 +20,13 @@ class ClaudeClient:
     Includes retry logic and circuit breaker for resilience.
     """
 
-    def __init__(self, api_key: str, model: str | None = None, max_tokens: int | None = None, temperature: float | None = None):
+    def __init__(
+        self,
+        api_key: str,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ):
         self.api_key = api_key
         self.model = model or DEFAULT_AI_MODEL
         self.max_tokens = max_tokens or MAX_COMMENT_TOKENS
@@ -97,4 +103,3 @@ class ClaudeClient:
         """Close the client."""
         await self.client.close()
         logger.info("ai.client_closed")
-

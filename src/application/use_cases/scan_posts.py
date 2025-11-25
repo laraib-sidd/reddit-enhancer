@@ -70,4 +70,3 @@ class ScanPostsUseCase:
         )
 
         return posts, new_posts
-

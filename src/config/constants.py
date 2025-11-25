@@ -35,4 +35,3 @@ SCAN_CYCLE_DELAY = 900  # 15 minutes
 
 # Telegram
 TELEGRAM_APPROVAL_TIMEOUT = 300  # 5 minutes
-

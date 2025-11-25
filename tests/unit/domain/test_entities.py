@@ -1,6 +1,5 @@
 """Tests for domain entities."""
 
-import pytest
 from datetime import datetime
 
 from src.domain.entities import Post, Comment, SuccessfulPattern, CommentStatus
@@ -113,4 +112,3 @@ class TestSuccessfulPattern:
         assert sample_pattern.is_high_quality(threshold=50)
         assert sample_pattern.is_high_quality(threshold=150)
         assert not sample_pattern.is_high_quality(threshold=200)
-

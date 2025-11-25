@@ -12,7 +12,7 @@ and infrastructure services.
 """
 
 from src.domain.entities import Post, Comment, CommentStatus
-from src.domain.value_objects import PostId, CommentText
+from src.domain.value_objects import CommentText
 from src.domain.repositories import PatternRepository
 from src.application.interfaces import IAIClient
 from src.common.logging import get_logger
@@ -29,11 +29,11 @@ class GenerateCommentUseCase:
     - Falls back to top patterns if none found
     - Calls AI service with post + patterns as context
     - Returns a Comment entity ready to be posted
-    
+
     Attributes:
         ai_client: Client for AI service (Claude)
         pattern_repository: Repository for successful comment patterns
-        
+
     Example:
         >>> use_case = GenerateCommentUseCase(ai_client, pattern_repo)
         >>> post = await post_repo.get_by_id("abc123")
@@ -49,7 +49,7 @@ class GenerateCommentUseCase:
     ):
         """
         Initialize the use case.
-        
+
         Args:
             ai_client: Client for calling AI service
             pattern_repository: Repository for fetching successful patterns
@@ -81,9 +81,7 @@ class GenerateCommentUseCase:
         # Fetch relevant patterns if requested
         patterns = []
         if use_patterns:
-            patterns = await self.pattern_repository.get_by_subreddit(
-                post.subreddit, limit=5
-            )
+            patterns = await self.pattern_repository.get_by_subreddit(post.subreddit, limit=5)
 
             # Fallback to top patterns if none found for subreddit
             if not patterns:
@@ -112,4 +110,3 @@ class GenerateCommentUseCase:
         )
 
         return comment
-
