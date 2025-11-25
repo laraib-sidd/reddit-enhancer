@@ -67,6 +67,8 @@ Tests comment generation with mock posts and real AI.
 
 ## 📋 Commands
 
+### Bot Commands
+
 | Command | Description |
 |---------|-------------|
 | `uv run reddit-bot init` | Initialize database schema and tables |
@@ -74,6 +76,23 @@ Tests comment generation with mock posts and real AI.
 | `uv run reddit-bot test` | Test with mock data (safe, no posting) |
 | `uv run reddit-bot manual` | Manual mode with Telegram approval |
 | `uv run reddit-bot auto` | Fully automated mode ⚠️ |
+| `uv run reddit-bot stats` | Show database statistics |
+| `uv run reddit-bot health` | Check system health |
+
+### Make Commands (Development)
+
+```bash
+make dev          # Install dev dependencies + pre-commit hooks
+make lint         # Run linter
+make format       # Format code
+make test         # Run tests
+make test-cov     # Run tests with coverage
+make db-upgrade   # Apply database migrations
+make db-migrate MSG="description"  # Create new migration
+make clean        # Clean cache files
+```
+
+Run `make help` for all available commands.
 
 ## 🏗️ Architecture
 
@@ -280,11 +299,19 @@ SELECT AVG(karma_score) FROM reddit_bot.comments WHERE status = 'posted';
 
 ## 🤝 Contributing
 
-1. Follow clean architecture principles
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+Quick start:
+```bash
+make dev  # Install dev dependencies + pre-commit hooks
+```
+
+Key principles:
+1. Follow clean architecture (see `.cursorrules`)
 2. Add tests for new features
 3. Use structured logging
 4. Type-hint everything
-5. Update documentation
+5. Run `make lint` before committing
 
 ## 📄 License
 
