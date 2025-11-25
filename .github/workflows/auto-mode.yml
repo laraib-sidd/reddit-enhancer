@@ -1,0 +1,114 @@
+name: Auto Mode Bot (Every 2 Hours)
+
+on:
+  schedule:
+    # Run every 2 hours, offset by 30 minutes from the test workflow
+    - cron: '30 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "CONFIRM" to run auto mode (posts comments automatically)'
+        required: true
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  auto-mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Only run if manually confirmed or on schedule
+    if: |
+      github.event_name == 'schedule' || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'CONFIRM')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Verify credentials
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+        run: |
+          if [ -z "$REDDIT_USERNAME" ] || [ -z "$REDDIT_PASSWORD" ]; then
+            echo "❌ Reddit credentials not configured. Auto mode requires REDDIT_USERNAME and REDDIT_PASSWORD."
+            exit 1
+          fi
+          echo "✅ All required credentials are configured"
+
+      - name: Run health check
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          TARGET_SUBREDDITS: ${{ vars.TARGET_SUBREDDITS || 'AskReddit' }}
+          LOG_LEVEL: INFO
+          ENVIRONMENT: production
+          JSON_LOGS: true
+        run: |
+          uv run reddit-bot health
+
+      - name: Run bot in AUTO mode
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          TARGET_SUBREDDITS: ${{ vars.TARGET_SUBREDDITS || 'AskReddit' }}
+          MODE_DELAY_MIN: ${{ vars.MODE_DELAY_MIN || '5' }}
+          MODE_DELAY_MAX: ${{ vars.MODE_DELAY_MAX || '15' }}
+          LOG_LEVEL: INFO
+          ENVIRONMENT: production
+          JSON_LOGS: true
+        run: |
+          echo "⚠️ Running bot in AUTO mode - will post comments automatically!"
+          echo "Target subreddits: $TARGET_SUBREDDITS"
+          # Run with --yes flag equivalent (auto-confirm)
+          yes | uv run reddit-bot auto || true
+
+      - name: Show statistics after run
+        if: always()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          LOG_LEVEL: INFO
+          JSON_LOGS: true
+        run: |
+          uv run reddit-bot stats || true
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: auto-mode
+    if: failure()
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "❌ Auto mode failed. Check the workflow logs for details."
+          # Add Telegram/Discord/Slack notification here if needed
+

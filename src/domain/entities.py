@@ -14,7 +14,7 @@ Example:
     ...     subreddit=SubredditName("Python"),
     ...     content="I'm looking for recommendations...",
     ...     url="https://reddit.com/...",
-    ...     created_at=datetime.utcnow(),
+    ...     created_at=utc_now(),
     ...     permalink="/r/Python/comments/...",
     ... )
     >>> post.mark_processed()
@@ -22,8 +22,13 @@ Example:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+
+
+def utc_now() -> datetime:
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 from src.domain.value_objects import (
     PostId,
@@ -71,7 +76,7 @@ class Post:
         ...     subreddit=SubredditName("Python"),
         ...     content="Looking for advice...",
         ...     url="https://reddit.com/r/Python/comments/abc123",
-        ...     created_at=datetime.utcnow(),
+        ...     created_at=utc_now(),
         ...     permalink="/r/Python/comments/abc123",
         ... )
         >>> post.mark_processed()
@@ -94,7 +99,7 @@ class Post:
         Sets the processed_at timestamp to current UTC time.
         Used to track which posts we've already generated comments for.
         """
-        self.processed_at = datetime.utcnow()
+        self.processed_at = utc_now()
 
     def is_processed(self) -> bool:
         """
@@ -176,7 +181,7 @@ class Comment:
         """
         self.status = CommentStatus.POSTED
         self.reddit_comment_id = reddit_id
-        self.posted_at = datetime.utcnow()
+        self.posted_at = utc_now()
 
     def mark_failed(self) -> None:
         """
@@ -227,7 +232,7 @@ class SuccessfulPattern:
     pattern_text: str
     subreddit: SubredditName
     score: Score
-    extracted_at: datetime = field(default_factory=datetime.utcnow)
+    extracted_at: datetime = field(default_factory=utc_now)
 
     def is_high_quality(self, threshold: int = 50) -> bool:
         """Check if this is a high-quality pattern."""

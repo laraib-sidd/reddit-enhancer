@@ -133,30 +133,45 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """
-    Initialize database - create schema and all tables with indexes.
+    Initialize database by running Alembic migrations.
 
     This should be called at application startup.
+    Uses Alembic for proper migration management instead of create_all().
     """
-    from src.infrastructure.database.models import Base
     from src.config.constants import DB_SCHEMA_NAME
     from sqlalchemy import text
+    import subprocess
+    import os
 
     engine = get_engine()
 
     try:
         logger.info("database.initializing", schema=DB_SCHEMA_NAME)
         
+        # Create schema if it doesn't exist
         async with engine.begin() as conn:
-            # Create schema if it doesn't exist
             await conn.execute(
                 text(f"CREATE SCHEMA IF NOT EXISTS {DB_SCHEMA_NAME}")
             )
             logger.info("database.schema_created", schema=DB_SCHEMA_NAME)
-            
-            # Create all tables with indexes
-            await conn.run_sync(Base.metadata.create_all)
-            
+        
+        # Run Alembic migrations
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        
+        if result.returncode != 0:
+            logger.error("database.migration_failed", stderr=result.stderr)
+            raise DatabaseError(f"Alembic migration failed: {result.stderr}")
+        
+        logger.info("database.migrations_applied", output=result.stdout.strip())
         logger.info("database.initialized", schema=DB_SCHEMA_NAME)
+    except DatabaseError:
+        raise
     except Exception as e:
         logger.error("database.initialization_failed", error=str(e))
         raise DatabaseError(f"Failed to initialize database: {e}") from e

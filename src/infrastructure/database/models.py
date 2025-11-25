@@ -1,6 +1,6 @@
 """SQLAlchemy database models with schema and indexes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import declarative_base, relationship
@@ -29,7 +29,8 @@ class PostModel(Base):
     content = Column(Text, nullable=True)
     url = Column(String, nullable=True)
     permalink = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     processed_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -57,8 +58,10 @@ class CommentModel(Base):
     status = Column(String, default="pending", nullable=False)
     karma_score = Column(Integer, default=0, nullable=False)
     reddit_comment_id = Column(String, nullable=True, unique=True)
-    posted_at = Column(DateTime, nullable=True)
+    posted_at = Column(DateTime(timezone=True), nullable=True)
     is_golden_example = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     post = relationship("PostModel", back_populates="comments")
@@ -85,5 +88,7 @@ class SuccessfulPatternModel(Base):
     pattern_text = Column(Text, nullable=False, unique=True)
     subreddit = Column(String, nullable=True)
     score = Column(Integer, default=0, nullable=False)
-    extracted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    extracted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 

@@ -341,23 +341,68 @@ class SQLAlchemyPatternRepository:
     async def search_similar(
         self, text: str, subreddit: SubredditName | None = None, limit: int = 5
     ) -> list[SuccessfulPattern]:
-        """Search for similar patterns (basic text search for now)."""
+        """
+        Search for similar patterns using PostgreSQL full-text search.
+        
+        Uses ts_rank to order results by relevance to the search text.
+        Falls back to top-scoring patterns if no matches found.
+        
+        Args:
+            text: Search text to find similar patterns
+            subreddit: Optional subreddit to filter by
+            limit: Maximum number of results
+            
+        Returns:
+            List of matching patterns ordered by relevance
+        """
+        from sqlalchemy import text as sql_text
+        
         try:
-            stmt = select(SuccessfulPatternModel)
-
-            if subreddit:
-                stmt = stmt.where(SuccessfulPatternModel.subreddit == subreddit)
-
-            # Basic text similarity (can be enhanced with vector search later)
-            stmt = stmt.order_by(SuccessfulPatternModel.score.desc()).limit(limit)
-
-            result = await self.session.execute(stmt)
-            models = result.scalars().all()
-
-            return [self._to_entity(model) for model in models]
+            # Build search query using PostgreSQL full-text search
+            # plainto_tsquery converts text to a search query
+            search_query = sql_text("""
+                SELECT id, pattern_text, subreddit, score, extracted_at
+                FROM reddit_bot.successful_patterns
+                WHERE (:subreddit IS NULL OR subreddit = :subreddit)
+                  AND to_tsvector('english', pattern_text) @@ plainto_tsquery('english', :search_text)
+                ORDER BY ts_rank(to_tsvector('english', pattern_text), plainto_tsquery('english', :search_text)) DESC,
+                         score DESC
+                LIMIT :limit
+            """)
+            
+            result = await self.session.execute(
+                search_query,
+                {
+                    "search_text": text,
+                    "subreddit": subreddit if subreddit else None,
+                    "limit": limit,
+                }
+            )
+            rows = result.fetchall()
+            
+            # If no results from full-text search, fall back to top patterns
+            if not rows:
+                logger.debug("pattern.search_no_fts_results", search_text=text[:50])
+                return await self.get_by_subreddit(subreddit, limit) if subreddit else await self.get_top_patterns(limit)
+            
+            patterns = [
+                SuccessfulPattern(
+                    id=row[0],
+                    pattern_text=row[1],
+                    subreddit=SubredditName(row[2]) if row[2] else SubredditName(""),
+                    score=Score(row[3]),
+                    extracted_at=row[4],
+                )
+                for row in rows
+            ]
+            
+            logger.debug("pattern.search_results", count=len(patterns), search_text=text[:50])
+            return patterns
+            
         except Exception as e:
-            logger.error("pattern.search_similar_failed", error=str(e))
-            raise DatabaseError(f"Failed to search similar patterns: {e}") from e
+            logger.warning("pattern.search_similar_failed", error=str(e))
+            # Fall back to simple query on error (e.g., if FTS not available)
+            return await self.get_by_subreddit(subreddit, limit) if subreddit else await self.get_top_patterns(limit)
 
     @staticmethod
     def _to_entity(model: SuccessfulPatternModel) -> SuccessfulPattern:

@@ -41,13 +41,14 @@ class PostTitle:
 
 @dataclass(frozen=True)
 class Score:
-    """Value object for karma score."""
+    """
+    Value object for karma score.
+    
+    Note: Reddit karma CAN be negative (downvoted content), so we allow
+    negative values. This is intentional and matches Reddit's behavior.
+    """
 
     value: int
-
-    def __post_init__(self) -> None:
-        if self.value < 0:
-            raise ValueError("Score cannot be negative")
 
     def __int__(self) -> int:
         return self.value
@@ -55,9 +56,36 @@ class Score:
     def __add__(self, other: "Score") -> "Score":
         return Score(self.value + other.value)
 
+    def __sub__(self, other: "Score") -> "Score":
+        return Score(self.value - other.value)
+
     def __lt__(self, other: "Score") -> bool:
         return self.value < other.value
 
     def __gt__(self, other: "Score") -> bool:
         return self.value > other.value
+
+    def __le__(self, other: "Score") -> bool:
+        return self.value <= other.value
+
+    def __ge__(self, other: "Score") -> bool:
+        return self.value >= other.value
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Score):
+            return self.value == other.value
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    @property
+    def is_positive(self) -> bool:
+        """Check if score is positive (upvoted)."""
+        return self.value > 0
+
+    @property
+    def is_negative(self) -> bool:
+        """Check if score is negative (downvoted)."""
+        return self.value < 0
 
