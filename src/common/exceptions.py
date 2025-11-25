@@ -55,4 +55,3 @@ class RateLimitError(RedditEnhancerException):
     def __init__(self, message: str, retry_after: int | None = None, *args, **kwargs):
         super().__init__(message, *args, **kwargs)
         self.retry_after = retry_after
-

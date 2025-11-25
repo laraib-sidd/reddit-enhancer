@@ -1,7 +1,6 @@
 """Mock Reddit client for testing without API credentials."""
 
 from datetime import datetime
-from typing import List
 
 from src.domain.entities import Post, SuccessfulPattern
 from src.domain.value_objects import PostId, SubredditName, PostTitle, Score
@@ -18,7 +17,9 @@ class MockRedditClient:
     """
 
     def __init__(self):
-        logger.warning("mock_reddit.initialized", message="Using mock Reddit client - no real API calls")
+        logger.warning(
+            "mock_reddit.initialized", message="Using mock Reddit client - no real API calls"
+        )
         self.call_count = 0
 
     async def get_rising_posts(self, subreddits: list[str], limit: int = 5) -> list[Post]:
@@ -34,7 +35,7 @@ class MockRedditClient:
                 title=PostTitle("What's the best programming language to learn in 2025?"),
                 subreddit=SubredditName(subreddits[0] if subreddits else "AskReddit"),
                 content="I'm a complete beginner and want to start learning to code. "
-                       "What language would you recommend and why?",
+                "What language would you recommend and why?",
                 url="https://reddit.com/r/AskReddit/mock1",
                 created_at=datetime.now(),
                 permalink="/r/AskReddit/comments/mock1/whats_the_best_programming_language/",
@@ -50,7 +51,9 @@ class MockRedditClient:
             ),
             Post(
                 id=PostId(f"mock_post_{self.call_count}_3"),
-                title=PostTitle("What's something that's obvious to you in your profession but not to others?"),
+                title=PostTitle(
+                    "What's something that's obvious to you in your profession but not to others?"
+                ),
                 subreddit=SubredditName(subreddits[0] if subreddits else "AskReddit"),
                 content="",
                 url="https://reddit.com/r/AskReddit/mock3",
@@ -102,4 +105,3 @@ class MockRedditClient:
     async def close(self) -> None:
         """Close the mock client (no-op)."""
         logger.info("mock_reddit.closed")
-

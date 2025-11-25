@@ -126,4 +126,3 @@ def retry_on_rate_limit(
         return sync_wrapper  # type: ignore
 
     return decorator
-

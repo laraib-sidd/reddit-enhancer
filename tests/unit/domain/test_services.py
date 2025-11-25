@@ -1,10 +1,7 @@
 """Tests for domain services."""
 
-import pytest
-from datetime import datetime
-
-from src.domain.entities import Comment, SuccessfulPattern, CommentStatus
-from src.domain.value_objects import PostId, SubredditName, CommentText, Score, CommentId
+from src.domain.entities import Comment, CommentStatus
+from src.domain.value_objects import PostId, CommentText, Score, CommentId
 from src.domain.services import CommentScoringService, PatternMatchingService
 
 
@@ -96,4 +93,3 @@ class TestPatternMatchingService:
 
         assert len(filtered) == 2  # Only 200 and 100 remain
         assert all(p.score.value >= 80 for p in filtered)
-

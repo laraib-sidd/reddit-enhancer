@@ -16,7 +16,6 @@ from src.infrastructure.database.repositories import (
 )
 from src.infrastructure.reddit.reader import RedditReader
 from src.infrastructure.reddit.writer import RedditWriter
-from src.infrastructure.reddit.mock import MockRedditClient
 from src.infrastructure.ai.claude_client import ClaudeClient
 from src.infrastructure.telegram.bot_handler import TelegramBotHandler
 from src.application.use_cases.scan_posts import ScanPostsUseCase
@@ -62,7 +61,9 @@ async def run_manual_mode():
     ai_client = ClaudeClient(settings.anthropic_api_key.get_secret_value())
 
     telegram_bot = TelegramBotHandler(
-        bot_token=settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else "",
+        bot_token=settings.telegram_bot_token.get_secret_value()
+        if settings.telegram_bot_token
+        else "",
         chat_id=settings.telegram_chat_id or "",
     )
     await telegram_bot.connect()
@@ -111,7 +112,7 @@ async def run_manual_mode():
                         console.print("[green]✓ Approved! Posting...[/green]")
                         await post_use_case.execute(comment)
                     elif response.action == "edit":
-                        console.print(f"[yellow]✏️  Edited. Posting new version...[/yellow]")
+                        console.print("[yellow]✏️  Edited. Posting new version...[/yellow]")
                         comment.content = response.content
                         await post_use_case.execute(comment)
                     elif response.action == "reject":
@@ -185,14 +186,18 @@ async def run_auto_mode():
 
                         # Random delay before posting
                         delay = random.randint(settings.mode_delay_min, settings.mode_delay_max)
-                        console.print(f"[dim]Waiting {delay/60:.1f} minutes before posting...[/dim]")
+                        console.print(
+                            f"[dim]Waiting {delay / 60:.1f} minutes before posting...[/dim]"
+                        )
                         await asyncio.sleep(delay)
 
                         # Post comment
                         await post_use_case.execute(comment)
 
                         if comment.reddit_comment_id:
-                            console.print(f"[green]✓ Posted comment {comment.reddit_comment_id}[/green]")
+                            console.print(
+                                f"[green]✓ Posted comment {comment.reddit_comment_id}[/green]"
+                            )
                         else:
                             console.print("[red]✗ Failed to post comment[/red]")
 
@@ -207,4 +212,3 @@ async def run_auto_mode():
         await reddit_reader.close()
         await reddit_writer.close()
         await ai_client.close()
-

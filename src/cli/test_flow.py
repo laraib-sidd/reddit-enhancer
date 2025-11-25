@@ -35,9 +35,7 @@ async def run_test():
     try:
         # Fetch mock posts
         console.print("[cyan]1. Fetching mock Reddit posts...[/cyan]")
-        posts = await reddit_client.get_rising_posts(
-            settings.subreddits_list, limit=3
-        )
+        posts = await reddit_client.get_rising_posts(settings.subreddits_list, limit=3)
 
         console.print(f"[green]✓ Found {len(posts)} mock posts[/green]\n")
 
@@ -47,14 +45,16 @@ async def run_test():
             console.print(f"[bold cyan]Post {i}/{len(posts)}[/bold cyan]\n")
 
             # Display post details
-            console.print(Panel(
-                f"[bold]Title:[/bold] {post.title}\n"
-                f"[bold]Subreddit:[/bold] r/{post.subreddit}\n"
-                f"[bold]Content:[/bold] {post.content if post.content else '[No content]'}\n"
-                f"[bold]URL:[/bold] {post.url}",
-                title="📝 Reddit Post",
-                border_style="blue"
-            ))
+            console.print(
+                Panel(
+                    f"[bold]Title:[/bold] {post.title}\n"
+                    f"[bold]Subreddit:[/bold] r/{post.subreddit}\n"
+                    f"[bold]Content:[/bold] {post.content if post.content else '[No content]'}\n"
+                    f"[bold]URL:[/bold] {post.url}",
+                    title="📝 Reddit Post",
+                    border_style="blue",
+                )
+            )
 
             # Generate comment
             console.print("\n[cyan]2. Generating AI comment...[/cyan]")
@@ -68,11 +68,13 @@ async def run_test():
             # Display generated comment
             console.print("\n[green]✓ Comment generated![/green]\n")
 
-            console.print(Panel(
-                Syntax(str(comment.content), "text", theme="monokai", word_wrap=True),
-                title="💬 Generated Comment",
-                border_style="green"
-            ))
+            console.print(
+                Panel(
+                    Syntax(str(comment.content), "text", theme="monokai", word_wrap=True),
+                    title="💬 Generated Comment",
+                    border_style="green",
+                )
+            )
 
             console.print(f"\n[dim]Comment length: {len(str(comment.content))} characters[/dim]")
             console.print(f"[dim]Status: {comment.status.value}[/dim]\n")
@@ -91,4 +93,3 @@ async def run_test():
     console.print("[dim]  • Mock Reddit client (no API calls)[/dim]")
     console.print("[dim]  • Real Claude AI (actual API calls)[/dim]")
     console.print("[dim]  • No comments were posted to Reddit[/dim]")
-

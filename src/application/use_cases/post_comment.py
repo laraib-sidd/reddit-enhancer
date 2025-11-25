@@ -70,4 +70,3 @@ class PostCommentUseCase:
         logger.info("use_case.post_comment.complete", comment_id=comment.id)
 
         return comment
-

@@ -1,6 +1,5 @@
 """Circuit breaker pattern implementation for resilient API calls."""
 
-import asyncio
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, TypeVar
@@ -184,4 +183,3 @@ def with_circuit_breaker(
         return sync_wrapper  # type: ignore
 
     return decorator
-

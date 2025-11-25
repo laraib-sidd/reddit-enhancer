@@ -1,8 +1,5 @@
 """Concrete repository implementations."""
 
-from datetime import datetime
-from typing import cast
-
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,11 +70,7 @@ class SQLAlchemyPostRepository:
     async def get_unprocessed(self, limit: int = 10) -> list[Post]:
         """Get unprocessed posts."""
         try:
-            stmt = (
-                select(PostModel)
-                .where(PostModel.processed_at.is_(None))
-                .limit(limit)
-            )
+            stmt = select(PostModel).where(PostModel.processed_at.is_(None)).limit(limit)
             result = await self.session.execute(stmt)
             models = result.scalars().all()
 
@@ -175,11 +168,7 @@ class SQLAlchemyCommentRepository:
     async def get_by_status(self, status: CommentStatus, limit: int = 10) -> list[Comment]:
         """Get comments by status."""
         try:
-            stmt = (
-                select(CommentModel)
-                .where(CommentModel.status == status.value)
-                .limit(limit)
-            )
+            stmt = select(CommentModel).where(CommentModel.status == status.value).limit(limit)
             result = await self.session.execute(stmt)
             models = result.scalars().all()
 
@@ -193,7 +182,7 @@ class SQLAlchemyCommentRepository:
         try:
             stmt = (
                 select(CommentModel)
-                .where(CommentModel.is_golden_example == True)
+                .where(CommentModel.is_golden_example.is_(True))
                 .order_by(CommentModel.karma_score.desc())
                 .limit(limit)
             )
@@ -214,7 +203,9 @@ class SQLAlchemyCommentRepository:
             content=CommentText(model.content),
             status=CommentStatus(model.status),
             karma_score=Score(model.karma_score),
-            reddit_comment_id=CommentId(model.reddit_comment_id) if model.reddit_comment_id else None,
+            reddit_comment_id=CommentId(model.reddit_comment_id)
+            if model.reddit_comment_id
+            else None,
             posted_at=model.posted_at,
             is_golden_example=model.is_golden_example,
         )
@@ -250,13 +241,13 @@ class SQLAlchemyPatternRepository:
     async def bulk_save(self, patterns: list[SuccessfulPattern]) -> int:
         """
         Bulk save patterns efficiently (10x faster than individual saves).
-        
+
         Args:
             patterns: List of patterns to save
-            
+
         Returns:
             Number of patterns saved
-            
+
         Example:
             >>> patterns = await reddit_reader.get_top_comments("AskReddit", limit=60)
             >>> saved_count = await pattern_repo.bulk_save(patterns)
@@ -265,7 +256,7 @@ class SQLAlchemyPatternRepository:
         try:
             if not patterns:
                 return 0
-            
+
             # Convert entities to dicts for bulk insert
             pattern_dicts = [
                 {
@@ -276,23 +267,25 @@ class SQLAlchemyPatternRepository:
                 }
                 for p in patterns
             ]
-            
+
             # Use bulk_insert_mappings for efficiency (10x faster)
             self.session.bulk_insert_mappings(
                 SuccessfulPatternModel,
                 pattern_dicts,
             )
-            
+
             await self.session.flush()
-            
+
             logger.info("patterns.bulk_saved", count=len(patterns))
             return len(patterns)
-            
+
         except Exception as e:
             logger.error("patterns.bulk_save_failed", count=len(patterns), error=str(e))
             raise DatabaseError(f"Failed to bulk save patterns: {e}") from e
 
-    async def get_by_subreddit(self, subreddit: SubredditName, limit: int = 10) -> list[SuccessfulPattern]:
+    async def get_by_subreddit(
+        self, subreddit: SubredditName, limit: int = 10
+    ) -> list[SuccessfulPattern]:
         """Get patterns for a specific subreddit."""
         try:
             stmt = (
@@ -328,8 +321,10 @@ class SQLAlchemyPatternRepository:
     async def exists(self, pattern_text: str) -> bool:
         """Check if pattern already exists."""
         try:
-            stmt = select(func.count()).select_from(SuccessfulPatternModel).where(
-                SuccessfulPatternModel.pattern_text == pattern_text
+            stmt = (
+                select(func.count())
+                .select_from(SuccessfulPatternModel)
+                .where(SuccessfulPatternModel.pattern_text == pattern_text)
             )
             result = await self.session.execute(stmt)
             count = result.scalar()
@@ -341,23 +336,76 @@ class SQLAlchemyPatternRepository:
     async def search_similar(
         self, text: str, subreddit: SubredditName | None = None, limit: int = 5
     ) -> list[SuccessfulPattern]:
-        """Search for similar patterns (basic text search for now)."""
+        """
+        Search for similar patterns using PostgreSQL full-text search.
+
+        Uses ts_rank to order results by relevance to the search text.
+        Falls back to top-scoring patterns if no matches found.
+
+        Args:
+            text: Search text to find similar patterns
+            subreddit: Optional subreddit to filter by
+            limit: Maximum number of results
+
+        Returns:
+            List of matching patterns ordered by relevance
+        """
+        from sqlalchemy import text as sql_text
+
         try:
-            stmt = select(SuccessfulPatternModel)
+            # Build search query using PostgreSQL full-text search
+            # plainto_tsquery converts text to a search query
+            search_query = sql_text("""
+                SELECT id, pattern_text, subreddit, score, extracted_at
+                FROM reddit_bot.successful_patterns
+                WHERE (:subreddit IS NULL OR subreddit = :subreddit)
+                  AND to_tsvector('english', pattern_text) @@ plainto_tsquery('english', :search_text)
+                ORDER BY ts_rank(to_tsvector('english', pattern_text), plainto_tsquery('english', :search_text)) DESC,
+                         score DESC
+                LIMIT :limit
+            """)
 
-            if subreddit:
-                stmt = stmt.where(SuccessfulPatternModel.subreddit == subreddit)
+            result = await self.session.execute(
+                search_query,
+                {
+                    "search_text": text,
+                    "subreddit": subreddit if subreddit else None,
+                    "limit": limit,
+                },
+            )
+            rows = result.fetchall()
 
-            # Basic text similarity (can be enhanced with vector search later)
-            stmt = stmt.order_by(SuccessfulPatternModel.score.desc()).limit(limit)
+            # If no results from full-text search, fall back to top patterns
+            if not rows:
+                logger.debug("pattern.search_no_fts_results", search_text=text[:50])
+                return (
+                    await self.get_by_subreddit(subreddit, limit)
+                    if subreddit
+                    else await self.get_top_patterns(limit)
+                )
 
-            result = await self.session.execute(stmt)
-            models = result.scalars().all()
+            patterns = [
+                SuccessfulPattern(
+                    id=row[0],
+                    pattern_text=row[1],
+                    subreddit=SubredditName(row[2]) if row[2] else SubredditName(""),
+                    score=Score(row[3]),
+                    extracted_at=row[4],
+                )
+                for row in rows
+            ]
 
-            return [self._to_entity(model) for model in models]
+            logger.debug("pattern.search_results", count=len(patterns), search_text=text[:50])
+            return patterns
+
         except Exception as e:
-            logger.error("pattern.search_similar_failed", error=str(e))
-            raise DatabaseError(f"Failed to search similar patterns: {e}") from e
+            logger.warning("pattern.search_similar_failed", error=str(e))
+            # Fall back to simple query on error (e.g., if FTS not available)
+            return (
+                await self.get_by_subreddit(subreddit, limit)
+                if subreddit
+                else await self.get_top_patterns(limit)
+            )
 
     @staticmethod
     def _to_entity(model: SuccessfulPatternModel) -> SuccessfulPattern:
@@ -369,4 +417,3 @@ class SQLAlchemyPatternRepository:
             score=Score(model.score),
             extracted_at=model.extracted_at,
         )
-

@@ -102,4 +102,3 @@ Reply ONLY with your comment. No quotes, no preamble, just the comment itself.""
             "You share personal experiences, ask questions, and keep things real and relatable. "
             "Most importantly: you sound HUMAN, not like an AI trying to be helpful."
         )
-

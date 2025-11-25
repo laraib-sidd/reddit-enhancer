@@ -68,9 +68,6 @@ def upgrade() -> None:
     op.create_index('ix_comments_post_status', 'comments', ['post_id', 'status'], unique=False, schema='reddit_bot')
     op.create_index('ix_comments_posted_at', 'comments', ['posted_at'], unique=False, schema='reddit_bot')
     op.create_index('ix_comments_status_karma', 'comments', ['status', 'karma_score'], unique=False, schema='reddit_bot')
-    op.drop_table('comments')
-    op.drop_table('posts')
-    op.drop_table('successful_patterns')
     # ### end Alembic commands ###
 
 

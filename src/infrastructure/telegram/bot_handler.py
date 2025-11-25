@@ -3,7 +3,7 @@
 import asyncio
 from datetime import datetime
 
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
 from src.domain.entities import Post
@@ -165,7 +165,11 @@ class TelegramBotHandler:
                                 )
 
                                 response_action = "approve" if action == "approve" else "reject"
-                                logger.info("telegram.approval_received", post_id=post_id, action=response_action)
+                                logger.info(
+                                    "telegram.approval_received",
+                                    post_id=post_id,
+                                    action=response_action,
+                                )
                                 return ApprovalResponse(response_action)
 
                     # Check for text message (reply/edit)
@@ -173,14 +177,20 @@ class TelegramBotHandler:
                         text = update.message.text.strip()
 
                         if text.lower() == "yes":
-                            logger.info("telegram.approval_received", post_id=post_id, action="approve")
+                            logger.info(
+                                "telegram.approval_received", post_id=post_id, action="approve"
+                            )
                             return ApprovalResponse("approve")
                         elif text.lower() in ["skip", "no"]:
-                            logger.info("telegram.approval_received", post_id=post_id, action="reject")
+                            logger.info(
+                                "telegram.approval_received", post_id=post_id, action="reject"
+                            )
                             return ApprovalResponse("reject")
                         else:
                             # Treat as edited comment
-                            logger.info("telegram.approval_received", post_id=post_id, action="edit")
+                            logger.info(
+                                "telegram.approval_received", post_id=post_id, action="edit"
+                            )
                             return ApprovalResponse("edit", content=text)
 
                 await asyncio.sleep(1)
@@ -199,4 +209,3 @@ class TelegramBotHandler:
             logger.info("telegram.closing")
             # Note: python-telegram-bot doesn't require explicit close for Bot
             self.bot = None
-
