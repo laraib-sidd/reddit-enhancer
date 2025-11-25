@@ -25,11 +25,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 
-
-def utc_now() -> datetime:
-    """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
-
 from src.domain.value_objects import (
     PostId,
     CommentId,
@@ -38,6 +33,11 @@ from src.domain.value_objects import (
     PostTitle,
     Score,
 )
+
+
+def utc_now() -> datetime:
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
 
 
 class CommentStatus(Enum):
@@ -58,7 +58,7 @@ class Post:
 
     Represents a post from Reddit that we want to comment on.
     This is a domain entity with identity (PostId) and lifecycle.
-    
+
     Attributes:
         id: Unique identifier for the post
         title: Post title (validated value object)
@@ -68,7 +68,7 @@ class Post:
         created_at: When the post was created on Reddit
         permalink: Reddit permalink (relative URL)
         processed_at: When we processed this post (None if unprocessed)
-        
+
     Example:
         >>> post = Post(
         ...     id="abc123",
@@ -95,7 +95,7 @@ class Post:
     def mark_processed(self) -> None:
         """
         Mark this post as processed.
-        
+
         Sets the processed_at timestamp to current UTC time.
         Used to track which posts we've already generated comments for.
         """
@@ -104,7 +104,7 @@ class Post:
     def is_processed(self) -> bool:
         """
         Check if post has been processed.
-        
+
         Returns:
             True if post has been processed (has processed_at timestamp)
         """
@@ -118,7 +118,7 @@ class Comment:
 
     Represents a comment we've generated (or plan to generate) for a Reddit post.
     Tracks the full lifecycle from generation → approval → posting → scoring.
-    
+
     Attributes:
         id: Database ID (None if not yet saved)
         post_id: ID of the post this comment is for
@@ -128,7 +128,7 @@ class Comment:
         reddit_comment_id: Reddit's ID after posting (None until posted)
         posted_at: When we posted to Reddit (None until posted)
         is_golden_example: Whether this is a high-performing example (>100 karma)
-        
+
     Example:
         >>> comment = Comment(
         ...     id=None,
@@ -155,7 +155,7 @@ class Comment:
     def approve(self) -> None:
         """
         Approve this comment for posting.
-        
+
         Changes status to APPROVED. Used in manual mode when user
         approves the comment via Telegram.
         """
@@ -164,7 +164,7 @@ class Comment:
     def reject(self) -> None:
         """
         Reject this comment.
-        
+
         Changes status to REJECTED. Used in manual mode when user
         rejects the comment via Telegram.
         """
@@ -173,10 +173,10 @@ class Comment:
     def mark_posted(self, reddit_id: CommentId) -> None:
         """
         Mark comment as successfully posted to Reddit.
-        
+
         Args:
             reddit_id: The comment ID returned by Reddit API
-            
+
         Sets status to POSTED and records the Reddit comment ID and timestamp.
         """
         self.status = CommentStatus.POSTED
@@ -186,7 +186,7 @@ class Comment:
     def mark_failed(self) -> None:
         """
         Mark comment posting as failed.
-        
+
         Changes status to FAILED. Used when posting to Reddit fails
         (rate limit, API error, etc.).
         """
@@ -195,10 +195,10 @@ class Comment:
     def update_score(self, new_score: int) -> None:
         """
         Update karma score for this comment.
-        
+
         Args:
             new_score: The new karma score from Reddit
-            
+
         Automatically marks as golden example if score >= 100.
         Golden examples are used as training data for future comments.
         """
@@ -210,10 +210,10 @@ class Comment:
     def is_postable(self) -> bool:
         """
         Check if comment is ready to be posted to Reddit.
-        
+
         Returns:
             True if status is PENDING or APPROVED
-            
+
         Comments with other statuses (POSTED, REJECTED, FAILED, SKIPPED)
         should not be posted.
         """
@@ -237,4 +237,3 @@ class SuccessfulPattern:
     def is_high_quality(self, threshold: int = 50) -> bool:
         """Check if this is a high-quality pattern."""
         return self.score.value >= threshold
-

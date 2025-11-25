@@ -58,4 +58,3 @@ class TestMockRedditClient:
 
         # Should not raise
         await client.close()
-

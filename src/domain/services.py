@@ -1,6 +1,6 @@
 """Domain services - business logic that doesn't fit in entities."""
 
-from src.domain.entities import Comment, SuccessfulPattern, Score
+from src.domain.entities import Comment, SuccessfulPattern
 
 
 class CommentScoringService:
@@ -97,4 +97,3 @@ class PatternMatchingService:
             Filtered list of patterns
         """
         return [p for p in patterns if p.score.value >= min_score]
-

@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.domain.entities import Post, Comment, SuccessfulPattern
+from src.domain.entities import Post, SuccessfulPattern
 
 
 class IRedditReader(Protocol):
@@ -51,4 +51,3 @@ class ITelegramBot(Protocol):
     async def wait_for_approval(self, post_id: str, timeout: int = 300) -> any:
         """Wait for user approval."""
         ...
-

@@ -19,12 +19,12 @@ class RedditWriter:
     """
 
     def __init__(
-        self, 
-        client_id: str, 
-        client_secret: str, 
-        username: str | None, 
+        self,
+        client_id: str,
+        client_secret: str,
+        username: str | None,
         password: str | None,
-        user_agent: str | None = None
+        user_agent: str | None = None,
     ):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -47,9 +47,7 @@ class RedditWriter:
         """Initialize and authenticate the Reddit client."""
         try:
             if not self.username or not self.password:
-                raise RedditAPIError(
-                    "Reddit username and password required for write operations"
-                )
+                raise RedditAPIError("Reddit username and password required for write operations")
 
             logger.info("reddit_writer.connecting", username=self.username)
 
@@ -113,4 +111,3 @@ class RedditWriter:
         except Exception as e:
             logger.error("reddit_writer.post_failed", post_id=post_id, error=str(e))
             raise RedditAPIError(f"Failed to post comment: {e}") from e
-

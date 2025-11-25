@@ -29,8 +29,15 @@ class PostModel(Base):
     content = Column(Text, nullable=True)
     url = Column(String, nullable=True)
     permalink = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
     processed_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -60,12 +67,19 @@ class CommentModel(Base):
     reddit_comment_id = Column(String, nullable=True, unique=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
     is_golden_example = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     # Relationships
     post = relationship("PostModel", back_populates="comments")
-    
+
     # Note: Full-text search vector will be added via migration
     # search_vector = Column(TSVECTOR, Computed("to_tsvector('english', content)", persisted=True))
     # Index("ix_comments_search_vector", "search_vector", postgresql_using="gin")
@@ -88,7 +102,15 @@ class SuccessfulPatternModel(Base):
     pattern_text = Column(Text, nullable=False, unique=True)
     subreddit = Column(String, nullable=True)
     score = Column(Integer, default=0, nullable=False)
-    extracted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
-
+    extracted_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

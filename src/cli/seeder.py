@@ -1,6 +1,5 @@
 """Seeder for populating database with successful patterns."""
 
-import os
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
@@ -22,7 +21,7 @@ async def seed_patterns():
     """
     # Suppress all logs during seeding for clean output
     configure_logging(log_level="ERROR", json_logs=False)
-    
+
     settings = get_settings()
 
     console.print("\n[bold blue]🌱 Seeding Successful Patterns[/bold blue]\n")
@@ -50,11 +49,7 @@ async def seed_patterns():
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             console=console,
         ) as progress:
-            
-            main_task = progress.add_task(
-                "[cyan]Processing subreddits...", 
-                total=len(subreddits)
-            )
+            main_task = progress.add_task("[cyan]Processing subreddits...", total=len(subreddits))
 
             for subreddit in subreddits:
                 progress.update(main_task, description=f"[cyan]Fetching r/{subreddit}...")
@@ -80,7 +75,7 @@ async def seed_patterns():
 
         # Summary
         console.print("\n" + "─" * 60)
-        console.print(f"[bold green]✓ Seeding Complete![/bold green]")
+        console.print("[bold green]✓ Seeding Complete![/bold green]")
         console.print(f"  • Added: [green]{total_added}[/green] new patterns")
         console.print(f"  • Skipped: [yellow]{total_skipped}[/yellow] duplicates")
         console.print(f"  • Total: [cyan]{total_added + total_skipped}[/cyan] patterns processed")
@@ -92,4 +87,3 @@ async def seed_patterns():
         raise
     finally:
         await reddit_reader.close()
-

@@ -59,7 +59,7 @@ class TestScore:
     def test_negative_score_allowed(self):
         """Test that negative score is allowed (Reddit karma can be negative)."""
         score = Score(-10)
-        
+
         assert score.value == -10
         assert int(score) == -10
         assert score.is_negative
@@ -68,7 +68,7 @@ class TestScore:
     def test_zero_score(self):
         """Test zero score."""
         score = Score(0)
-        
+
         assert score.value == 0
         assert not score.is_positive
         assert not score.is_negative
@@ -76,7 +76,7 @@ class TestScore:
     def test_positive_score(self):
         """Test positive score properties."""
         score = Score(100)
-        
+
         assert score.is_positive
         assert not score.is_negative
 
@@ -121,4 +121,3 @@ class TestScore:
         assert score1 == score2
         assert score1 != score3
         assert hash(score1) == hash(score2)
-

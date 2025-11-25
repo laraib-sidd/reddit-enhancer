@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
 
 from src.config.settings import get_settings
 from src.config.constants import DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT
@@ -147,14 +146,12 @@ async def init_db() -> None:
 
     try:
         logger.info("database.initializing", schema=DB_SCHEMA_NAME)
-        
+
         # Create schema if it doesn't exist
         async with engine.begin() as conn:
-            await conn.execute(
-                text(f"CREATE SCHEMA IF NOT EXISTS {DB_SCHEMA_NAME}")
-            )
+            await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {DB_SCHEMA_NAME}"))
             logger.info("database.schema_created", schema=DB_SCHEMA_NAME)
-        
+
         # Run Alembic migrations
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         result = subprocess.run(
@@ -163,11 +160,11 @@ async def init_db() -> None:
             capture_output=True,
             text=True,
         )
-        
+
         if result.returncode != 0:
             logger.error("database.migration_failed", stderr=result.stderr)
             raise DatabaseError(f"Alembic migration failed: {result.stderr}")
-        
+
         logger.info("database.migrations_applied", output=result.stdout.strip())
         logger.info("database.initialized", schema=DB_SCHEMA_NAME)
     except DatabaseError:
@@ -187,4 +184,3 @@ async def close_db() -> None:
         _engine = None
         _session_factory = None
         logger.info("database.closed")
-

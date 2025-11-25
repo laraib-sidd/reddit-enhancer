@@ -67,4 +67,3 @@ def sample_patterns() -> list[SuccessfulPattern]:
             score=Score(75),
         ),
     ]
-

@@ -1,10 +1,9 @@
 """Repository interfaces (abstract base classes) for data access."""
 
-from abc import ABC, abstractmethod
 from typing import Protocol
 
 from src.domain.entities import Post, Comment, SuccessfulPattern, CommentStatus
-from src.domain.value_objects import PostId, CommentId, SubredditName
+from src.domain.value_objects import PostId, SubredditName
 
 
 class PostRepository(Protocol):
@@ -42,9 +41,7 @@ class CommentRepository(Protocol):
         """Get all comments for a post."""
         ...
 
-    async def get_by_status(
-        self, status: CommentStatus, limit: int = 10
-    ) -> list[Comment]:
+    async def get_by_status(self, status: CommentStatus, limit: int = 10) -> list[Comment]:
         """Get comments by status."""
         ...
 
@@ -84,4 +81,3 @@ class PatternRepository(Protocol):
         For now, it's a simple text-based search.
         """
         ...
-

@@ -43,7 +43,7 @@ class PostTitle:
 class Score:
     """
     Value object for karma score.
-    
+
     Note: Reddit karma CAN be negative (downvoted content), so we allow
     negative values. This is intentional and matches Reddit's behavior.
     """
@@ -88,4 +88,3 @@ class Score:
     def is_negative(self) -> bool:
         """Check if score is negative (downvoted)."""
         return self.value < 0
-
