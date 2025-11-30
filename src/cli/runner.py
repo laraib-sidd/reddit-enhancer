@@ -61,14 +61,10 @@ async def run_manual_mode():
     # Initialize AI client with fallback (Gemini primary, Claude fallback)
     ai_client = FallbackAIClient(
         gemini_api_key=(
-            settings.google_api_key.get_secret_value()
-            if settings.google_api_key
-            else None
+            settings.google_api_key.get_secret_value() if settings.google_api_key else None
         ),
         claude_api_key=(
-            settings.anthropic_api_key.get_secret_value()
-            if settings.anthropic_api_key
-            else None
+            settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
         ),
     )
     console.print(
@@ -181,14 +177,10 @@ async def run_auto_mode():
     # Initialize AI client with fallback (Gemini primary, Claude fallback)
     ai_client = FallbackAIClient(
         gemini_api_key=(
-            settings.google_api_key.get_secret_value()
-            if settings.google_api_key
-            else None
+            settings.google_api_key.get_secret_value() if settings.google_api_key else None
         ),
         claude_api_key=(
-            settings.anthropic_api_key.get_secret_value()
-            if settings.anthropic_api_key
-            else None
+            settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
         ),
     )
     console.print(

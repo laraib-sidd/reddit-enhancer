@@ -328,10 +328,14 @@ async def _check_health():
         if settings.gemini_is_configured:
             ai_providers.append("Gemini (primary)")
         if settings.claude_is_configured:
-            ai_providers.append("Claude" + (" (fallback)" if settings.gemini_is_configured else " (primary)"))
+            ai_providers.append(
+                "Claude" + (" (fallback)" if settings.gemini_is_configured else " (primary)")
+            )
 
         if not ai_providers:
-            config_issues.append("No AI provider configured (set GOOGLE_API_KEY or ANTHROPIC_API_KEY)")
+            config_issues.append(
+                "No AI provider configured (set GOOGLE_API_KEY or ANTHROPIC_API_KEY)"
+            )
         if not settings.telegram_is_configured:
             config_issues.append("Telegram not configured (optional)")
 
