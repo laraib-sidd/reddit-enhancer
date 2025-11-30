@@ -239,6 +239,13 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 4. Update documentation if needed
 5. Update tests if behavior changed
 
+### After Pushing (PR Review)
+1. Check PR comments: `gh api repos/OWNER/REPO/pulls/PR_NUM/comments`
+2. **Critically review** each automated suggestion (Copilot, etc.)
+3. Verify suggestions are factually correct before implementing
+4. Respond to or resolve each comment
+5. Push fixes in new commits (not amend) for traceability
+
 ### Git Commits
 - Use descriptive commit messages
 - Format: `type(scope): description`
@@ -250,6 +257,24 @@ async def test_generate_comment_uses_patterns(mock_ai_client, mock_pattern_repo)
 - Include tests for new features
 - Update documentation
 - Add screenshots/examples if applicable
+
+### PR Review Comments (Copilot, etc.)
+- **ALWAYS** review automated PR comments before each commit/push
+- **NEVER** blindly implement suggestions - verify they are correct
+- Common false positives to watch for:
+  - Suggesting API parameters that don't exist (e.g., `requestor_kwargs["proxy"]`)
+  - Over-engineering simple solutions
+  - Breaking working code for "consistency"
+- For each suggestion, ask:
+  1. Is this factually correct? (Check the library docs!)
+  2. Does this actually improve the code?
+  3. Will this break existing functionality?
+- Valid suggestions to implement:
+  - Security improvements (credential exposure, etc.)
+  - DRY violations (duplicate code)
+  - Missing error handling for specific exceptions
+  - Missing test coverage
+- Mark suggestions as "resolved" or respond with reasoning if rejecting
 
 ## 🚨 What NOT to Do
 

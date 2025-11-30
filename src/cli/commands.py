@@ -345,6 +345,7 @@ async def _check_health():
             "environment": settings.environment,
             "subreddits": settings.subreddits_list,
             "ai_providers": ai_providers,
+            "proxy_enabled": settings.proxy_is_configured,
         }
     except Exception as e:
         checks["configuration"] = {
@@ -399,6 +400,13 @@ async def _check_health():
         config_table.add_row("AI Providers", ", ".join(ai_providers))
     else:
         config_table.add_row("AI Providers", "[red]None configured[/red]")
+
+    # Show proxy status
+    proxy_enabled = config_check.get("proxy_enabled", False)
+    config_table.add_row(
+        "Proxy",
+        "[green]Enabled[/green]" if proxy_enabled else "[dim]Not configured[/dim]",
+    )
 
     for issue in config_check.get("issues", []):
         if "not configured" in issue.lower():
