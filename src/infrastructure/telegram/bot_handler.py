@@ -3,7 +3,6 @@
 import asyncio
 from datetime import datetime
 
-from pydantic import SecretStr
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
@@ -36,10 +35,11 @@ class TelegramBotHandler:
         Initialize the Telegram bot handler.
 
         Args:
-            bot_token: Telegram bot token
+            bot_token: Telegram bot token (plain string, already extracted from SecretStr)
             chat_id: Chat ID to send messages to
         """
-        self.token = SecretStr(bot_token) if bot_token else None
+        # Store as plain strings - consistent with other clients (RedditReader, ClaudeClient, etc.)
+        self.bot_token = bot_token
         self.chat_id = chat_id
         self.bot: Bot | None = None
 
@@ -48,12 +48,12 @@ class TelegramBotHandler:
 
     async def connect(self) -> None:
         """Initialize the Telegram bot."""
-        if not self.token or not self.chat_id:
+        if not self.bot_token or not self.chat_id:
             raise AppTelegramError("Telegram not configured")
 
         try:
             logger.info("telegram.connecting")
-            self.bot = Bot(token=self.token.get_secret_value())
+            self.bot = Bot(token=self.bot_token)
 
             # Verify bot
             me = await self.bot.get_me()

@@ -1,13 +1,13 @@
 """Mode runners for manual and automatic operation."""
 
 import asyncio
-import random
 from datetime import datetime
 
 from rich.console import Console
 
 from src.config.settings import get_settings
 from src.common.logging import get_logger
+from src.common.anti_detection import get_anti_detection
 from src.infrastructure.database.connection import get_session, init_db
 from src.infrastructure.database.repositories import (
     SQLAlchemyPostRepository,
@@ -155,16 +155,20 @@ async def run_manual_mode():
 
 
 async def run_auto_mode():
-    """Run bot in fully automatic mode."""
+    """Run bot in fully automatic mode with anti-detection."""
     settings = get_settings()
 
     console.print("[bold yellow]⚠️  Automatic mode started[/bold yellow]")
     logger.info("mode.auto_started")
 
+    # Initialize anti-detection (FREE - no proxy needed)
+    anti_detection = get_anti_detection()
+    console.print("[green]✓ Anti-detection enabled (rate limiting, natural delays)[/green]")
+
     # Initialize database
     await init_db()
 
-    # Get proxy URL if configured
+    # Get proxy URL if configured (optional)
     proxy_url = settings.proxy_url.get_secret_value() if settings.proxy_url else None
 
     # Initialize services
@@ -187,7 +191,9 @@ async def run_auto_mode():
     await reddit_writer.connect()
 
     if proxy_url:
-        console.print("[green]✓ Proxy enabled[/green]")
+        console.print("[green]✓ Proxy enabled (optional extra protection)[/green]")
+    else:
+        console.print("[dim]ℹ No proxy configured (using free anti-detection only)[/dim]")
 
     # Initialize AI client with fallback (Gemini primary, Claude fallback)
     ai_client = FallbackAIClient(
@@ -206,6 +212,12 @@ async def run_auto_mode():
     try:
         while True:
             console.print(f"\n[cyan]🔎 [{datetime.now()}] Starting auto cycle...[/cyan]")
+
+            # Show daily stats
+            stats = anti_detection.get_stats()
+            console.print(
+                f"[dim]📊 Today: {stats['total_today']}/{stats['max_daily']} comments[/dim]"
+            )
 
             async with get_session() as session:
                 # Setup repositories and use cases
@@ -227,33 +239,45 @@ async def run_auto_mode():
                 else:
                     # Process each new post
                     for post in new_posts:
+                        # Check if we can comment (anti-detection limits)
+                        can_comment, reason = anti_detection.can_comment_in_subreddit(
+                            post.subreddit
+                        )
+                        if not can_comment:
+                            console.print(f"[yellow]⏳ Skipping: {reason}[/yellow]")
+                            continue
+
                         console.print(f"\n[bold]Generating comment for:[/bold] {post.title}")
 
                         # Generate comment
                         comment = await generate_use_case.execute(post)
                         await comment_repo.save(comment)
 
-                        # Random delay before posting
-                        delay = random.randint(settings.mode_delay_min, settings.mode_delay_max)
-                        console.print(
-                            f"[dim]Waiting {delay / 60:.1f} minutes before posting...[/dim]"
+                        # Natural delay before posting (gaussian distribution)
+                        console.print("[dim]⏳ Natural delay before posting...[/dim]")
+                        await anti_detection.natural_delay(
+                            min_seconds=settings.mode_delay_min,
+                            max_seconds=settings.mode_delay_max,
                         )
-                        await asyncio.sleep(delay)
 
                         # Post comment
                         await post_use_case.execute(comment)
 
                         if comment.reddit_comment_id:
+                            # Record the comment for rate limiting
+                            anti_detection.record_comment(post.subreddit)
                             console.print(
                                 f"[green]✓ Posted comment {comment.reddit_comment_id}[/green]"
                             )
                         else:
                             console.print("[red]✗ Failed to post comment[/red]")
 
-                        await asyncio.sleep(60)  # Brief pause between posts
+                        # Natural delay between posts
+                        await anti_detection.natural_delay(min_seconds=30, max_seconds=90)
 
-            console.print("\n[dim]Sleeping 15 minutes before next scan...[/dim]")
-            await asyncio.sleep(900)  # 15 minutes
+            # Natural delay before next scan
+            console.print("\n[dim]💤 Natural delay before next scan...[/dim]")
+            await anti_detection.natural_delay(min_seconds=600, max_seconds=1200)
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Shutting down...[/yellow]")
