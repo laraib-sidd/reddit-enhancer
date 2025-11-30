@@ -15,7 +15,6 @@ export interface DashboardStats {
   avgKarma: number
   topSubreddits: { subreddit: string; count: number }[]
   recentActivity: { date: string; posts: number; comments: number }[]
-  aiProviderUsage: { provider: string; count: number }[]
 }
 
 export interface Comment {
@@ -23,7 +22,6 @@ export interface Comment {
   content: string
   status: 'pending' | 'approved' | 'rejected' | 'posted'
   karma_score: number | null
-  ai_provider: string | null
   created_at: string | null
 }
 
@@ -60,11 +58,6 @@ export const demoData: DashboardData = {
       { date: '2025-11-29', posts: 25, comments: 18 },
       { date: '2025-11-30', posts: 28, comments: 21 },
     ],
-    aiProviderUsage: [
-      { provider: 'gemini-pro', count: 45 },
-      { provider: 'gemini-flash', count: 32 },
-      { provider: 'claude', count: 12 },
-    ],
   },
   recentComments: [
     {
@@ -72,7 +65,6 @@ export const demoData: DashboardData = {
       content: 'python. ngl i tried starting with something else and it was a nightmare of semicolons. python just lets you build stuff fast.',
       status: 'posted',
       karma_score: 42,
-      ai_provider: 'gemini-pro',
       created_at: '2025-11-30T10:00:00Z',
     },
     {
@@ -80,7 +72,6 @@ export const demoData: DashboardData = {
       content: "tbh i think it's because their work scales like crazy. one person can write a program that a million people use.",
       status: 'posted',
       karma_score: 28,
-      ai_provider: 'gemini-pro',
       created_at: '2025-11-30T09:30:00Z',
     },
     {
@@ -88,7 +79,6 @@ export const demoData: DashboardData = {
       content: "in software, when a manager asks for 'one tiny little change' it's almost never tiny lol",
       status: 'pending',
       karma_score: null,
-      ai_provider: 'gemini-flash',
       created_at: '2025-11-30T08:00:00Z',
     },
   ],
@@ -114,4 +104,3 @@ export async function fetchDashboardData(): Promise<{ data: DashboardData; isDem
     return { data: demoData, isDemo: true }
   }
 }
-
