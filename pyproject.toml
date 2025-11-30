@@ -21,6 +21,7 @@ dependencies = [
     "alembic>=1.13.0",
     "psycopg2-binary>=2.9.11",
     "google-genai>=1.52.0",
+    "aiohttp-socks>=0.10.2",
 ]
 
 [project.optional-dependencies]

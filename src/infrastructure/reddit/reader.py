@@ -2,6 +2,7 @@
 
 import asyncpraw
 from asyncpraw.reddit import Reddit, Subreddit
+import aiohttp
 
 from src.domain.entities import Post, SuccessfulPattern
 from src.domain.value_objects import PostId, SubredditName, PostTitle, Score
@@ -12,18 +13,56 @@ from src.common.retry import retry_on_api_error, retry_on_rate_limit
 logger = get_logger(__name__)
 
 
+def _create_proxy_session(proxy_url: str | None) -> aiohttp.ClientSession | None:
+    """
+    Create an aiohttp session with proxy support.
+
+    Args:
+        proxy_url: Proxy URL (http:// or socks5://)
+
+    Returns:
+        aiohttp.ClientSession with proxy configured, or None if no proxy
+    """
+    if not proxy_url:
+        return None
+
+    try:
+        # Check if it's a SOCKS proxy
+        if proxy_url.startswith("socks"):
+            from aiohttp_socks import ProxyConnector
+
+            connector = ProxyConnector.from_url(proxy_url)
+            return aiohttp.ClientSession(connector=connector)
+        else:
+            # HTTP proxy - use trust_env or explicit proxy
+            # For HTTP proxies, asyncpraw handles it via requestor_kwargs
+            return None
+    except Exception as e:
+        logger.warning("reddit.proxy_session_failed", error=str(e))
+        return None
+
+
 class RedditReader:
     """
     Async Reddit reader for read-only operations.
 
     Does not require username/password - only client_id and client_secret.
+    Supports proxy configuration for avoiding IP-based flagging.
     """
 
-    def __init__(self, client_id: str, client_secret: str, user_agent: str | None = None):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        user_agent: str | None = None,
+        proxy_url: str | None = None,
+    ):
         self.client_id = client_id
         self.client_secret = client_secret
         self.user_agent = user_agent or "reddit-enhancer:v0.2.0"
+        self.proxy_url = proxy_url
         self.reddit: Reddit | None = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self) -> "RedditReader":
         """Async context manager entry."""
@@ -35,14 +74,31 @@ class RedditReader:
         await self.close()
 
     async def connect(self) -> None:
-        """Initialize the Reddit client."""
+        """Initialize the Reddit client with optional proxy support."""
         try:
-            logger.info("reddit_reader.connecting")
+            logger.info("reddit_reader.connecting", proxy_configured=bool(self.proxy_url))
+
+            # Build requestor kwargs for proxy
+            requestor_kwargs = {}
+
+            if self.proxy_url:
+                self._session = _create_proxy_session(self.proxy_url)
+                if self._session:
+                    requestor_kwargs["session"] = self._session
+                    logger.info("reddit_reader.proxy_enabled", proxy_type="socks")
+                elif self.proxy_url.startswith("http"):
+                    # For HTTP proxies, set environment variable approach
+                    import os
+
+                    os.environ["HTTP_PROXY"] = self.proxy_url
+                    os.environ["HTTPS_PROXY"] = self.proxy_url
+                    logger.info("reddit_reader.proxy_enabled", proxy_type="http")
 
             self.reddit = asyncpraw.Reddit(
                 client_id=self.client_id,
                 client_secret=self.client_secret,
                 user_agent=self.user_agent,
+                requestor_kwargs=requestor_kwargs if requestor_kwargs else None,
             )
 
             # Verify read-only mode
@@ -54,10 +110,12 @@ class RedditReader:
             raise RedditAPIError(f"Failed to connect to Reddit: {e}") from e
 
     async def close(self) -> None:
-        """Close the Reddit client."""
+        """Close the Reddit client and proxy session."""
         if self.reddit:
             await self.reddit.close()
-            logger.info("reddit_reader.closed")
+        if self._session:
+            await self._session.close()
+        logger.info("reddit_reader.closed")
 
     @retry_on_api_error(max_attempts=3)
     @retry_on_rate_limit(max_attempts=5)

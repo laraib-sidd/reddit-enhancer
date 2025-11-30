@@ -2,6 +2,7 @@
 
 import asyncpraw
 from asyncpraw.reddit import Reddit
+import aiohttp
 
 from src.domain.value_objects import CommentId
 from src.common.logging import get_logger
@@ -11,11 +12,38 @@ from src.common.retry import retry_on_api_error, retry_on_rate_limit
 logger = get_logger(__name__)
 
 
+def _create_proxy_session(proxy_url: str | None) -> aiohttp.ClientSession | None:
+    """
+    Create an aiohttp session with proxy support.
+
+    Args:
+        proxy_url: Proxy URL (http:// or socks5://)
+
+    Returns:
+        aiohttp.ClientSession with proxy configured, or None if no proxy
+    """
+    if not proxy_url:
+        return None
+
+    try:
+        if proxy_url.startswith("socks"):
+            from aiohttp_socks import ProxyConnector
+
+            connector = ProxyConnector.from_url(proxy_url)
+            return aiohttp.ClientSession(connector=connector)
+        else:
+            return None
+    except Exception as e:
+        logger.warning("reddit.proxy_session_failed", error=str(e))
+        return None
+
+
 class RedditWriter:
     """
     Async Reddit writer for write operations (posting comments).
 
     Requires full authentication (username + password).
+    Supports proxy configuration for avoiding IP-based flagging.
     """
 
     def __init__(
@@ -25,14 +53,17 @@ class RedditWriter:
         username: str | None,
         password: str | None,
         user_agent: str | None = None,
+        proxy_url: str | None = None,
     ):
         self.client_id = client_id
         self.client_secret = client_secret
         self.username = username
         self.password = password
         self.user_agent = user_agent or "reddit-enhancer:v0.2.0"
+        self.proxy_url = proxy_url
         self.reddit: Reddit | None = None
         self.is_authenticated = False
+        self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self) -> "RedditWriter":
         """Async context manager entry."""
@@ -44,12 +75,31 @@ class RedditWriter:
         await self.close()
 
     async def connect(self) -> None:
-        """Initialize and authenticate the Reddit client."""
+        """Initialize and authenticate the Reddit client with optional proxy."""
         try:
             if not self.username or not self.password:
                 raise RedditAPIError("Reddit username and password required for write operations")
 
-            logger.info("reddit_writer.connecting", username=self.username)
+            logger.info(
+                "reddit_writer.connecting",
+                username=self.username,
+                proxy_configured=bool(self.proxy_url),
+            )
+
+            # Build requestor kwargs for proxy
+            requestor_kwargs = {}
+
+            if self.proxy_url:
+                self._session = _create_proxy_session(self.proxy_url)
+                if self._session:
+                    requestor_kwargs["session"] = self._session
+                    logger.info("reddit_writer.proxy_enabled", proxy_type="socks")
+                elif self.proxy_url.startswith("http"):
+                    import os
+
+                    os.environ["HTTP_PROXY"] = self.proxy_url
+                    os.environ["HTTPS_PROXY"] = self.proxy_url
+                    logger.info("reddit_writer.proxy_enabled", proxy_type="http")
 
             self.reddit = asyncpraw.Reddit(
                 client_id=self.client_id,
@@ -57,6 +107,7 @@ class RedditWriter:
                 user_agent=self.user_agent,
                 username=self.username,
                 password=self.password,
+                requestor_kwargs=requestor_kwargs if requestor_kwargs else None,
             )
 
             # Verify authentication
@@ -71,10 +122,12 @@ class RedditWriter:
             raise RedditAPIError(f"Failed to authenticate with Reddit: {e}") from e
 
     async def close(self) -> None:
-        """Close the Reddit client."""
+        """Close the Reddit client and proxy session."""
         if self.reddit:
             await self.reddit.close()
-            logger.info("reddit_writer.closed")
+        if self._session:
+            await self._session.close()
+        logger.info("reddit_writer.closed")
 
     @retry_on_api_error(max_attempts=3)
     @retry_on_rate_limit(max_attempts=5)

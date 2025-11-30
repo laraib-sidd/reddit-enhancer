@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     mode_delay_min: int = Field(default=300)
     mode_delay_max: int = Field(default=1800)
 
+    # Proxy settings (optional - helps avoid account flagging)
+    # Supports: http://host:port, socks5://user:pass@host:port
+    proxy_url: SecretStr | None = None
+
     # Logging
     log_level: str = Field(default="INFO")
     json_logs: bool = Field(default=False)
@@ -67,6 +71,11 @@ class Settings(BaseSettings):
     def ai_is_configured(self) -> bool:
         """Check if at least one AI provider is configured."""
         return self.gemini_is_configured or self.claude_is_configured
+
+    @property
+    def proxy_is_configured(self) -> bool:
+        """Check if proxy is configured."""
+        return self.proxy_url is not None
 
     @property
     def db_async_url(self) -> str:

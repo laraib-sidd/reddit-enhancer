@@ -36,11 +36,15 @@ async def run_manual_mode():
     # Initialize database
     await init_db()
 
+    # Get proxy URL if configured
+    proxy_url = settings.proxy_url.get_secret_value() if settings.proxy_url else None
+
     # Initialize services
     reddit_reader = RedditReader(
         client_id=settings.reddit_client_id,
         client_secret=settings.reddit_client_secret.get_secret_value(),
         user_agent=settings.reddit_user_agent,
+        proxy_url=proxy_url,
     )
     await reddit_reader.connect()
 
@@ -50,10 +54,13 @@ async def run_manual_mode():
         username=settings.reddit_username,
         password=settings.reddit_password.get_secret_value() if settings.reddit_password else None,
         user_agent=settings.reddit_user_agent,
+        proxy_url=proxy_url,
     )
     try:
         await reddit_writer.connect()
         console.print("[green]✓ Reddit writer authenticated[/green]")
+        if proxy_url:
+            console.print("[green]✓ Proxy enabled[/green]")
     except Exception as e:
         console.print(f"[yellow]⚠️  Reddit writer not available: {e}[/yellow]")
         console.print("[yellow]You can generate comments but not post them.[/yellow]")
@@ -157,11 +164,15 @@ async def run_auto_mode():
     # Initialize database
     await init_db()
 
+    # Get proxy URL if configured
+    proxy_url = settings.proxy_url.get_secret_value() if settings.proxy_url else None
+
     # Initialize services
     reddit_reader = RedditReader(
         client_id=settings.reddit_client_id,
         client_secret=settings.reddit_client_secret.get_secret_value(),
         user_agent=settings.reddit_user_agent,
+        proxy_url=proxy_url,
     )
     await reddit_reader.connect()
 
@@ -171,8 +182,12 @@ async def run_auto_mode():
         username=settings.reddit_username,
         password=settings.reddit_password.get_secret_value() if settings.reddit_password else None,
         user_agent=settings.reddit_user_agent,
+        proxy_url=proxy_url,
     )
     await reddit_writer.connect()
+
+    if proxy_url:
+        console.print("[green]✓ Proxy enabled[/green]")
 
     # Initialize AI client with fallback (Gemini primary, Claude fallback)
     ai_client = FallbackAIClient(
