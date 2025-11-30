@@ -1,5 +1,5 @@
 import { MessageSquare, CheckCircle, XCircle, Clock, Send } from 'lucide-react'
-import type { Comment } from '../lib/supabase.ts'
+import type { Comment } from '../lib/data'
 
 interface RecentCommentsProps {
   comments: Comment[]
@@ -55,9 +55,11 @@ export function RecentComments({ comments }: RecentCommentsProps) {
                       {comment.ai_provider}
                     </span>
                   )}
-                  <span>
-                    {new Date(comment.created_at).toLocaleDateString()}
-                  </span>
+                  {comment.created_at && (
+                    <span>
+                      {new Date(comment.created_at).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
               </div>
             )

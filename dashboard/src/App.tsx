@@ -15,83 +15,13 @@ import { SubredditBreakdown } from './components/SubredditBreakdown'
 import { AIProviderStats } from './components/AIProviderStats'
 import { RecentComments } from './components/RecentComments'
 import { 
-  fetchDashboardStats, 
-  fetchRecentComments,
-  type DashboardStats,
-  type Comment 
-} from './lib/supabase'
-
-// Demo data for when Supabase is not configured
-const demoStats: DashboardStats = {
-  totalPosts: 156,
-  totalComments: 89,
-  postedComments: 67,
-  pendingComments: 12,
-  rejectedComments: 10,
-  totalKarma: 1234,
-  avgKarma: 18.4,
-  topSubreddits: [
-    { subreddit: 'AskReddit', count: 45 },
-    { subreddit: 'NoStupidQuestions', count: 32 },
-    { subreddit: 'explainlikeimfive', count: 28 },
-    { subreddit: 'programming', count: 15 },
-    { subreddit: 'webdev', count: 12 },
-  ],
-  recentActivity: [
-    { date: '2025-11-24', posts: 12, comments: 8 },
-    { date: '2025-11-25', posts: 18, comments: 14 },
-    { date: '2025-11-26', posts: 15, comments: 11 },
-    { date: '2025-11-27', posts: 22, comments: 16 },
-    { date: '2025-11-28', posts: 19, comments: 13 },
-    { date: '2025-11-29', posts: 25, comments: 18 },
-    { date: '2025-11-30', posts: 28, comments: 21 },
-  ],
-  aiProviderUsage: [
-    { provider: 'gemini-pro', count: 45 },
-    { provider: 'gemini-flash', count: 32 },
-    { provider: 'claude', count: 12 },
-  ],
-}
-
-const demoComments: Comment[] = [
-  {
-    id: '1',
-    post_id: 'post1',
-    content: 'python. ngl i tried starting with something else and it was a nightmare of semicolons. python just lets you build stuff fast.',
-    status: 'posted',
-    karma_score: 42,
-    reddit_comment_id: 'abc123',
-    ai_provider: 'gemini-pro',
-    created_at: '2025-11-30T10:00:00Z',
-    posted_at: '2025-11-30T10:05:00Z',
-  },
-  {
-    id: '2',
-    post_id: 'post2',
-    content: 'tbh i think it\'s because their work scales like crazy. one person can write a program that a million people use.',
-    status: 'posted',
-    karma_score: 28,
-    reddit_comment_id: 'def456',
-    ai_provider: 'gemini-pro',
-    created_at: '2025-11-30T09:30:00Z',
-    posted_at: '2025-11-30T09:35:00Z',
-  },
-  {
-    id: '3',
-    post_id: 'post3',
-    content: 'in software, when a manager asks for \'one tiny little change\' it\'s almost never tiny lol',
-    status: 'pending',
-    karma_score: null,
-    reddit_comment_id: null,
-    ai_provider: 'gemini-flash',
-    created_at: '2025-11-30T08:00:00Z',
-    posted_at: null,
-  },
-]
+  fetchDashboardData, 
+  demoData,
+  type DashboardData,
+} from './lib/data'
 
 function App() {
-  const [stats, setStats] = useState<DashboardStats>(demoStats)
-  const [comments, setComments] = useState<Comment[]>(demoComments)
+  const [data, setData] = useState<DashboardData>(demoData)
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [isDemo, setIsDemo] = useState(true)
@@ -99,16 +29,9 @@ function App() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      if (supabaseUrl) {
-        const [statsData, commentsData] = await Promise.all([
-          fetchDashboardStats(),
-          fetchRecentComments(5),
-        ])
-        setStats(statsData)
-        setComments(commentsData)
-        setIsDemo(false)
-      }
+      const result = await fetchDashboardData()
+      setData(result.data)
+      setIsDemo(result.isDemo)
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -119,10 +42,10 @@ function App() {
 
   useEffect(() => {
     loadData()
-    // Refresh every 5 minutes
-    const interval = setInterval(loadData, 5 * 60 * 1000)
-    return () => clearInterval(interval)
   }, [])
+
+  const stats = data.stats
+  const comments = data.recentComments
 
   const successRate = stats.totalComments > 0 
     ? Math.round((stats.postedComments / stats.totalComments) * 100) 
@@ -147,6 +70,11 @@ function App() {
               {isDemo && (
                 <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
                   Demo Mode
+                </span>
+              )}
+              {!isDemo && data.generated_at && (
+                <span className="text-xs text-gray-500">
+                  Data from: {new Date(data.generated_at).toLocaleString()}
                 </span>
               )}
               <button
@@ -174,7 +102,7 @@ function App() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Last Updated */}
         <p className="mb-6 text-sm text-gray-500">
-          Last updated: {lastUpdated.toLocaleTimeString()}
+          Last refreshed: {lastUpdated.toLocaleTimeString()}
         </p>
 
         {/* Stats Grid */}
