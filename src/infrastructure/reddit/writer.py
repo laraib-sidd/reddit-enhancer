@@ -1,41 +1,16 @@
 """Async Reddit writer for write operations."""
 
+import aiohttp
 import asyncpraw
 from asyncpraw.reddit import Reddit
-import aiohttp
 
 from src.domain.value_objects import CommentId
 from src.common.logging import get_logger
 from src.common.exceptions import RedditAPIError
 from src.common.retry import retry_on_api_error, retry_on_rate_limit
+from src.infrastructure.reddit.proxy_utils import create_proxy_session
 
 logger = get_logger(__name__)
-
-
-def _create_proxy_session(proxy_url: str | None) -> aiohttp.ClientSession | None:
-    """
-    Create an aiohttp session with proxy support.
-
-    Args:
-        proxy_url: Proxy URL (http:// or socks5://)
-
-    Returns:
-        aiohttp.ClientSession with proxy configured, or None if no proxy
-    """
-    if not proxy_url:
-        return None
-
-    try:
-        if proxy_url.startswith("socks"):
-            from aiohttp_socks import ProxyConnector
-
-            connector = ProxyConnector.from_url(proxy_url)
-            return aiohttp.ClientSession(connector=connector)
-        else:
-            return None
-    except Exception as e:
-        logger.warning("reddit.proxy_session_failed", error=str(e))
-        return None
 
 
 class RedditWriter:
@@ -90,7 +65,7 @@ class RedditWriter:
             requestor_kwargs = {}
 
             if self.proxy_url:
-                self._session = _create_proxy_session(self.proxy_url)
+                self._session = create_proxy_session(self.proxy_url)
                 if self._session:
                     requestor_kwargs["session"] = self._session
                     logger.info("reddit_writer.proxy_enabled", proxy_type="socks")

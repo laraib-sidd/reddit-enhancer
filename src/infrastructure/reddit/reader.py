@@ -1,45 +1,17 @@
 """Async Reddit reader for read-only operations."""
 
+import aiohttp
 import asyncpraw
 from asyncpraw.reddit import Reddit, Subreddit
-import aiohttp
 
 from src.domain.entities import Post, SuccessfulPattern
 from src.domain.value_objects import PostId, SubredditName, PostTitle, Score
 from src.common.logging import get_logger
 from src.common.exceptions import RedditAPIError
 from src.common.retry import retry_on_api_error, retry_on_rate_limit
+from src.infrastructure.reddit.proxy_utils import create_proxy_session
 
 logger = get_logger(__name__)
-
-
-def _create_proxy_session(proxy_url: str | None) -> aiohttp.ClientSession | None:
-    """
-    Create an aiohttp session with proxy support.
-
-    Args:
-        proxy_url: Proxy URL (http:// or socks5://)
-
-    Returns:
-        aiohttp.ClientSession with proxy configured, or None if no proxy
-    """
-    if not proxy_url:
-        return None
-
-    try:
-        # Check if it's a SOCKS proxy
-        if proxy_url.startswith("socks"):
-            from aiohttp_socks import ProxyConnector
-
-            connector = ProxyConnector.from_url(proxy_url)
-            return aiohttp.ClientSession(connector=connector)
-        else:
-            # HTTP proxy - use trust_env or explicit proxy
-            # For HTTP proxies, asyncpraw handles it via requestor_kwargs
-            return None
-    except Exception as e:
-        logger.warning("reddit.proxy_session_failed", error=str(e))
-        return None
 
 
 class RedditReader:
@@ -82,7 +54,7 @@ class RedditReader:
             requestor_kwargs = {}
 
             if self.proxy_url:
-                self._session = _create_proxy_session(self.proxy_url)
+                self._session = create_proxy_session(self.proxy_url)
                 if self._session:
                     requestor_kwargs["session"] = self._session
                     logger.info("reddit_reader.proxy_enabled", proxy_type="socks")
