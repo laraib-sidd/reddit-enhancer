@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime
 
+from pydantic import SecretStr
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
@@ -10,7 +11,6 @@ from src.domain.entities import Post
 from src.common.logging import get_logger
 from src.common.exceptions import TelegramError as AppTelegramError
 from src.common.retry import retry_on_api_error
-from src.config.settings import TelegramSettings
 from src.config.constants import TELEGRAM_APPROVAL_TIMEOUT
 
 logger = get_logger(__name__)
@@ -31,21 +31,29 @@ class TelegramBotHandler:
     Sends posts and proposed comments to Telegram for approval.
     """
 
-    def __init__(self, settings: TelegramSettings):
-        self.settings = settings
+    def __init__(self, bot_token: str, chat_id: str):
+        """
+        Initialize the Telegram bot handler.
+
+        Args:
+            bot_token: Telegram bot token
+            chat_id: Chat ID to send messages to
+        """
+        self.token = SecretStr(bot_token) if bot_token else None
+        self.chat_id = chat_id
         self.bot: Bot | None = None
 
-        if not settings.is_configured:
+        if not bot_token or not chat_id:
             logger.warning("telegram.not_configured", message="Telegram settings missing")
 
     async def connect(self) -> None:
         """Initialize the Telegram bot."""
-        if not self.settings.is_configured:
+        if not self.token or not self.chat_id:
             raise AppTelegramError("Telegram not configured")
 
         try:
             logger.info("telegram.connecting")
-            self.bot = Bot(token=self.settings.token.get_secret_value())
+            self.bot = Bot(token=self.token.get_secret_value())
 
             # Verify bot
             me = await self.bot.get_me()
@@ -105,7 +113,7 @@ class TelegramBotHandler:
 
             # Send message
             await self.bot.send_message(
-                chat_id=self.settings.chat_id,
+                chat_id=self.chat_id,
                 text=message_text,
                 parse_mode="Markdown",
                 reply_markup=reply_markup,
@@ -160,7 +168,7 @@ class TelegramBotHandler:
                             if pid == post_id:
                                 await update.callback_query.answer()
                                 await self.bot.send_message(
-                                    chat_id=self.settings.chat_id,
+                                    chat_id=self.chat_id,
                                     text=f"✓ Action received: {action}",
                                 )
 
@@ -173,7 +181,7 @@ class TelegramBotHandler:
                                 return ApprovalResponse(response_action)
 
                     # Check for text message (reply/edit)
-                    if update.message and str(update.message.chat.id) == str(self.settings.chat_id):
+                    if update.message and str(update.message.chat.id) == str(self.chat_id):
                         text = update.message.text.strip()
 
                         if text.lower() == "yes":
