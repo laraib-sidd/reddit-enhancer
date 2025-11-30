@@ -49,9 +49,11 @@ def _compact_renderer(logger, name, event_dict):
     # Add context key-value pairs with subtle coloring
     if event_dict:
         kv_pairs = " ".join(
-            f"{DIM}{k}={RESET}{v!r}"
-            if not isinstance(v, (int, float, bool))
-            else f"{DIM}{k}={RESET}{v}"
+            (
+                f"{DIM}{k}={RESET}{v!r}"
+                if not isinstance(v, (int, float, bool))
+                else f"{DIM}{k}={RESET}{v}"
+            )
             for k, v in sorted(event_dict.items())
         )
         parts.append(f"{DIM}|{RESET} {kv_pairs}")
