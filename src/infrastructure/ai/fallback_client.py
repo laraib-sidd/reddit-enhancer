@@ -11,10 +11,10 @@ class FallbackAIClient:
     """
     AI client that tries multiple providers in order of precedence.
 
-    Order: Gemini (primary) → Claude (fallback)
+    Order: Gemini Pro → Gemini Flash → Claude
 
-    If Gemini fails (rate limit, API error, etc.), automatically
-    falls back to Claude without interrupting the workflow.
+    If one fails (rate limit, API error, etc.), automatically
+    falls back to the next without interrupting the workflow.
     """
 
     def __init__(
@@ -26,34 +26,43 @@ class FallbackAIClient:
         Initialize the fallback AI client.
 
         Args:
-            gemini_api_key: Google Gemini API key (primary)
-            claude_api_key: Anthropic Claude API key (fallback)
+            gemini_api_key: Google Gemini API key (for Pro and Flash)
+            claude_api_key: Anthropic Claude API key (last fallback)
 
         Raises:
             AIGenerationError: If no AI provider is configured
         """
         self.clients: list[tuple[str, object]] = []
-        self._gemini_client = None
-        self._claude_client = None
 
-        # Initialize Gemini (primary) if available
+        # Initialize Gemini models (Pro first, then Flash as fallback)
         if gemini_api_key:
+            # Gemini 2.5 Pro (primary - highest quality)
             try:
                 from src.infrastructure.ai.gemini_client import GeminiClient
 
-                self._gemini_client = GeminiClient(gemini_api_key)
-                self.clients.append(("gemini", self._gemini_client))
-                logger.info("ai.fallback.gemini_configured")
+                gemini_pro = GeminiClient(gemini_api_key, model="gemini-2.5-pro")
+                self.clients.append(("gemini-pro", gemini_pro))
+                logger.info("ai.fallback.gemini_pro_configured")
             except Exception as e:
-                logger.warning("ai.fallback.gemini_init_failed", error=str(e))
+                logger.warning("ai.fallback.gemini_pro_init_failed", error=str(e))
 
-        # Initialize Claude (fallback) if available
+            # Gemini 2.5 Flash (secondary - faster, higher limits)
+            try:
+                from src.infrastructure.ai.gemini_client import GeminiClient
+
+                gemini_flash = GeminiClient(gemini_api_key, model="gemini-2.5-flash")
+                self.clients.append(("gemini-flash", gemini_flash))
+                logger.info("ai.fallback.gemini_flash_configured")
+            except Exception as e:
+                logger.warning("ai.fallback.gemini_flash_init_failed", error=str(e))
+
+        # Initialize Claude (last fallback)
         if claude_api_key:
             try:
                 from src.infrastructure.ai.claude_client import ClaudeClient
 
-                self._claude_client = ClaudeClient(claude_api_key)
-                self.clients.append(("claude", self._claude_client))
+                claude = ClaudeClient(claude_api_key)
+                self.clients.append(("claude", claude))
                 logger.info("ai.fallback.claude_configured")
             except Exception as e:
                 logger.warning("ai.fallback.claude_init_failed", error=str(e))
@@ -79,7 +88,7 @@ class FallbackAIClient:
         """
         Generate a comment using available AI providers.
 
-        Tries providers in order: Gemini → Claude.
+        Tries providers in order: Gemini Pro → Gemini Flash → Claude.
         Falls back to next provider if current one fails.
 
         Args:
@@ -155,4 +164,3 @@ class FallbackAIClient:
     def available_providers(self) -> list[str]:
         """Get list of available provider names."""
         return [name for name, _ in self.clients]
-
