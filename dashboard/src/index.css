@@ -1,61 +1,52 @@
 @import "tailwindcss";
 
-/* Custom animations */
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+:root {
+  font-family: "Inter", "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-@keyframes slide-in-from-bottom {
-  from { 
+body {
+  background-color: #030712;
+  color: #f8fafc;
+}
+
+@keyframes fadeIn {
+  from {
     opacity: 0;
-    transform: translateY(8px); 
+    transform: translateY(12px);
   }
-  to { 
+  to {
     opacity: 1;
-    transform: translateY(0); 
+    transform: translateY(0);
   }
 }
 
-.animate-in {
-  animation-duration: 300ms;
-  animation-timing-function: ease-out;
-  animation-fill-mode: both;
+@keyframes floatSlow {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
-.fade-in {
-  animation-name: fade-in;
+@keyframes fillBar {
+  from {
+    width: 0;
+  }
 }
 
-.slide-in-from-bottom-2 {
-  animation-name: slide-in-from-bottom;
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
-.duration-300 {
-  animation-duration: 300ms;
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
 }
 
-/* Smooth scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
-}
-
-/* Selection */
-::selection {
-  background: #6366f1;
-  color: white;
+.animate-bar {
+  animation: fillBar 0.8s ease-out forwards;
 }
