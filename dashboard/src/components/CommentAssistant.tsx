@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Sparkles, 
   TrendingUp, 
@@ -9,7 +9,8 @@ import {
   Clock,
   MessageSquare,
   ArrowUp,
-  Link as LinkIcon
+  Link as LinkIcon,
+  AlertCircle
 } from 'lucide-react'
 
 interface RedditPost {
@@ -29,8 +30,70 @@ interface CommentAssistantProps {
   onGenerateComment: (post: RedditPost) => Promise<string>
 }
 
-// Target subreddits for rising posts
-const TARGET_SUBREDDITS = ['AskReddit', 'NoStupidQuestions', 'explainlikeimfive']
+// Demo posts for when Reddit API can't be accessed
+// These are examples of the types of posts the assistant can help with
+const DEMO_POSTS: RedditPost[] = [
+  {
+    id: 'demo1',
+    title: "What's something that's considered normal now but would've been insane 20 years ago?",
+    subreddit: 'AskReddit',
+    score: 847,
+    num_comments: 234,
+    created_utc: Date.now() / 1000 - 3600, // 1 hour ago
+    permalink: '/r/AskReddit/comments/demo1/',
+    selftext: '',
+    url: 'https://reddit.com/r/AskReddit/comments/demo1/',
+    growth_score: 14.1
+  },
+  {
+    id: 'demo2',
+    title: "Why do programmers make so much money compared to other professions?",
+    subreddit: 'NoStupidQuestions',
+    score: 523,
+    num_comments: 189,
+    created_utc: Date.now() / 1000 - 7200, // 2 hours ago
+    permalink: '/r/NoStupidQuestions/comments/demo2/',
+    selftext: "I've always wondered this. Like, they just type on computers right? Why do tech companies pay them 150k+ when teachers and nurses make way less?",
+    url: 'https://reddit.com/r/NoStupidQuestions/comments/demo2/',
+    growth_score: 8.7
+  },
+  {
+    id: 'demo3',
+    title: "ELI5: Why does time seem to go faster as you get older?",
+    subreddit: 'explainlikeimfive',
+    score: 312,
+    num_comments: 87,
+    created_utc: Date.now() / 1000 - 5400, // 1.5 hours ago
+    permalink: '/r/explainlikeimfive/comments/demo3/',
+    selftext: "When I was a kid, summer vacation felt like forever. Now a whole year goes by in what feels like a month.",
+    url: 'https://reddit.com/r/explainlikeimfive/comments/demo3/',
+    growth_score: 6.9
+  },
+  {
+    id: 'demo4',
+    title: "What's a skill that took you way longer to learn than it should have?",
+    subreddit: 'AskReddit',
+    score: 156,
+    num_comments: 42,
+    created_utc: Date.now() / 1000 - 1800, // 30 min ago
+    permalink: '/r/AskReddit/comments/demo4/',
+    selftext: '',
+    url: 'https://reddit.com/r/AskReddit/comments/demo4/',
+    growth_score: 17.3
+  },
+  {
+    id: 'demo5',
+    title: "Why do people say 'sleep on it' when making decisions? Does it actually help?",
+    subreddit: 'NoStupidQuestions',
+    score: 89,
+    num_comments: 28,
+    created_utc: Date.now() / 1000 - 2700, // 45 min ago
+    permalink: '/r/NoStupidQuestions/comments/demo5/',
+    selftext: '',
+    url: 'https://reddit.com/r/NoStupidQuestions/comments/demo5/',
+    growth_score: 5.9
+  }
+]
 
 export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const [activeTab, setActiveTab] = useState<'rising' | 'url'>('rising')
@@ -41,91 +104,51 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const [loadingComment, setLoadingComment] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [copied, setCopied] = useState(false)
+  const [customTitle, setCustomTitle] = useState('')
 
-  // Fetch rising posts from subreddits
+  // Load posts on mount
+  useEffect(() => {
+    fetchRisingPosts()
+  }, [])
+
+  // Load demo posts (in production, these would come from a GitHub Action)
   const fetchRisingPosts = async () => {
     setLoadingPosts(true)
     try {
-      const allPosts: RedditPost[] = []
-      
-      for (const subreddit of TARGET_SUBREDDITS) {
-        try {
-          // Using Reddit's public JSON endpoint - no auth needed!
-          const response = await fetch(
-            `https://www.reddit.com/r/${subreddit}/rising.json?limit=10`,
-            { headers: { 'User-Agent': 'RedditEnhancer/1.0' } }
-          )
-          
-          if (response.ok) {
-            const data = await response.json()
-            const posts = data.data.children.map((child: any) => {
-              const post = child.data
-              const ageMinutes = (Date.now() / 1000 - post.created_utc) / 60
-              // Growth score: higher score in less time = more likely to blow up
-              const growthScore = ageMinutes > 0 ? (post.score / ageMinutes) * 100 : 0
-              
-              return {
-                id: post.id,
-                title: post.title,
-                subreddit: post.subreddit,
-                score: post.score,
-                num_comments: post.num_comments,
-                created_utc: post.created_utc,
-                permalink: post.permalink,
-                selftext: post.selftext || '',
-                url: `https://reddit.com${post.permalink}`,
-                growth_score: Math.round(growthScore * 10) / 10
-              }
-            })
-            allPosts.push(...posts)
-          }
-        } catch (e) {
-          console.error(`Failed to fetch from r/${subreddit}:`, e)
-        }
+      // Try to fetch from static data file first
+      const response = await fetch('/reddit-enhancer/rising-posts.json')
+      if (response.ok) {
+        const posts = await response.json()
+        setRisingPosts(posts)
+      } else {
+        // Fall back to demo posts
+        setRisingPosts(DEMO_POSTS)
       }
-      
-      // Sort by growth score (likely to blow up)
-      allPosts.sort((a, b) => (b.growth_score || 0) - (a.growth_score || 0))
-      setRisingPosts(allPosts.slice(0, 15))
-    } catch (error) {
-      console.error('Failed to fetch rising posts:', error)
+    } catch {
+      // Use demo posts if fetch fails
+      setRisingPosts(DEMO_POSTS)
     } finally {
       setLoadingPosts(false)
     }
   }
 
-  // Fetch post from URL
-  const fetchPostFromUrl = async (url: string) => {
-    try {
-      // Convert URL to JSON endpoint
-      let jsonUrl = url.trim()
-      if (jsonUrl.includes('?')) {
-        jsonUrl = jsonUrl.split('?')[0]
-      }
-      if (!jsonUrl.endsWith('.json')) {
-        jsonUrl = jsonUrl + '.json'
-      }
-      
-      const response = await fetch(jsonUrl)
-      if (!response.ok) throw new Error('Failed to fetch post')
-      
-      const data = await response.json()
-      const post = data[0].data.children[0].data
-      
-      return {
-        id: post.id,
-        title: post.title,
-        subreddit: post.subreddit,
-        score: post.score,
-        num_comments: post.num_comments,
-        created_utc: post.created_utc,
-        permalink: post.permalink,
-        selftext: post.selftext || '',
-        url: `https://reddit.com${post.permalink}`,
-      } as RedditPost
-    } catch (error) {
-      console.error('Failed to fetch post:', error)
-      throw error
+  // Parse post from URL input (creates a post object from user input)
+  const parsePostFromUrl = (url: string): RedditPost => {
+    // Extract subreddit and post ID from URL
+    const match = url.match(/reddit\.com\/r\/(\w+)\/comments\/(\w+)/)
+    const subreddit = match?.[1] || 'unknown'
+    const postId = match?.[2] || 'custom'
+    
+    return {
+      id: postId,
+      title: 'Custom Post', // User will see this is a custom URL
+      subreddit,
+      score: 0,
+      num_comments: 0,
+      created_utc: Date.now() / 1000,
+      permalink: url.replace('https://reddit.com', '').replace('https://www.reddit.com', ''),
+      selftext: '',
+      url: url.startsWith('http') ? url : `https://reddit.com${url}`,
     }
   }
 
@@ -150,15 +173,13 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const handleUrlSubmit = async () => {
     if (!urlInput.trim()) return
     
-    setLoadingComment(true)
-    try {
-      const post = await fetchPostFromUrl(urlInput)
-      await handleGenerateComment(post)
-    } catch (error) {
-      console.error('Error:', error)
-      setGeneratedComment('Failed to fetch post. Make sure the URL is a valid Reddit post.')
-      setLoadingComment(false)
+    // Parse the URL to create a post object
+    const post = parsePostFromUrl(urlInput)
+    // Use custom title if provided
+    if (customTitle.trim()) {
+      post.title = customTitle.trim()
     }
+    await handleGenerateComment(post)
   }
 
   // Copy to clipboard
@@ -241,14 +262,19 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                   className="flex items-center gap-1 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-white/10 disabled:opacity-50"
                 >
                   <RefreshCw className={`h-3 w-3 ${loadingPosts ? 'animate-spin' : ''}`} />
-                  {risingPosts.length === 0 ? 'Load Posts' : 'Refresh'}
+                  Refresh
                 </button>
               </div>
 
-              {risingPosts.length === 0 ? (
+              {loadingPosts ? (
+                <div className="flex h-64 flex-col items-center justify-center text-gray-500">
+                  <RefreshCw className="mb-2 h-8 w-8 animate-spin opacity-50" />
+                  <p className="text-sm">Loading rising posts...</p>
+                </div>
+              ) : risingPosts.length === 0 ? (
                 <div className="flex h-64 flex-col items-center justify-center text-gray-500">
                   <Flame className="mb-2 h-8 w-8 opacity-50" />
-                  <p className="text-sm">Click "Load Posts" to find trending posts</p>
+                  <p className="text-sm">No posts available</p>
                 </div>
               ) : (
                 <div className="max-h-96 space-y-2 overflow-y-auto pr-2">
@@ -293,16 +319,29 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
             <>
               <h3 className="mb-4 flex items-center gap-2 font-medium">
                 <LinkIcon className="h-4 w-4 text-blue-400" />
-                Enter Reddit Post URL
+                Enter Post Details
               </h3>
-              <div className="space-y-4">
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://reddit.com/r/AskReddit/comments/..."
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs text-gray-500">Reddit URL</label>
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://reddit.com/r/AskReddit/comments/..."
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-gray-500">Post Title (for better comment generation)</label>
+                  <input
+                    type="text"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="What's the post about?"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
+                  />
+                </div>
                 <button
                   onClick={handleUrlSubmit}
                   disabled={!urlInput.trim() || loadingComment}
@@ -310,6 +349,10 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                 >
                   {loadingComment ? 'Generating...' : 'Generate Comment'}
                 </button>
+                <p className="flex items-center gap-1 text-xs text-gray-500">
+                  <AlertCircle className="h-3 w-3" />
+                  Paste the title for best results (can't fetch due to CORS)
+                </p>
               </div>
             </>
           )}
