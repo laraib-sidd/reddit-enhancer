@@ -1,4 +1,3 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 
 interface SubredditData {
@@ -10,61 +9,43 @@ interface SubredditBreakdownProps {
   data: SubredditData[]
 }
 
-const COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981']
+const COLORS = ['#a855f7', '#8b5cf6', '#7c3aed', '#6d28d9', '#5b21b6']
 
 export function SubredditBreakdown({ data }: SubredditBreakdownProps) {
-  const formattedData = data.map(item => ({
-    name: `r/${item.subreddit}`,
-    value: item.count
-  }))
+  const maxCount = Math.max(...data.map(d => d.count), 1)
 
   return (
-    <div className="card p-6">
+    <div className="card p-5">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-xl bg-emerald-500/20 p-2.5 border border-emerald-500/20">
-          <TrendingUp className="h-5 w-5 text-emerald-400" />
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+          <TrendingUp className="w-5 h-5 text-emerald-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-white">Top Subreddits</h3>
-          <p className="text-sm text-slate-500">By posts scanned</p>
+          <h3 className="text-sm font-semibold text-white">Top Subreddits</h3>
+          <p className="text-xs text-zinc-500">By posts scanned</p>
         </div>
       </div>
       
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={formattedData} layout="vertical" margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-            <XAxis 
-              type="number" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#64748b', fontSize: 12 }}
-            />
-            <YAxis 
-              type="category" 
-              dataKey="name" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#94a3b8', fontSize: 12 }}
-              width={120}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: '#1a1d24',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-              }}
-              labelStyle={{ color: '#94a3b8' }}
-              itemStyle={{ color: '#f8fafc' }}
-              cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
-            />
-            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-              {formattedData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="space-y-4">
+        {data.map((item, index) => (
+          <div key={item.subreddit} className="group">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">
+                r/{item.subreddit}
+              </span>
+              <span className="text-sm font-medium text-zinc-400">{item.count}</span>
+            </div>
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full rounded-full transition-all duration-500 ease-out group-hover:opacity-90"
+                style={{ 
+                  width: `${(item.count / maxCount) * 100}%`,
+                  background: COLORS[index % COLORS.length]
+                }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
