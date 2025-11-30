@@ -16,7 +16,7 @@ from src.infrastructure.database.repositories import (
 )
 from src.infrastructure.reddit.reader import RedditReader
 from src.infrastructure.reddit.writer import RedditWriter
-from src.infrastructure.ai.claude_client import ClaudeClient
+from src.infrastructure.ai.fallback_client import FallbackAIClient
 from src.infrastructure.telegram.bot_handler import TelegramBotHandler
 from src.application.use_cases.scan_posts import ScanPostsUseCase
 from src.application.use_cases.generate_comment import GenerateCommentUseCase
@@ -58,7 +58,23 @@ async def run_manual_mode():
         console.print(f"[yellow]⚠️  Reddit writer not available: {e}[/yellow]")
         console.print("[yellow]You can generate comments but not post them.[/yellow]")
 
-    ai_client = ClaudeClient(settings.anthropic_api_key.get_secret_value())
+    # Initialize AI client with fallback (Gemini primary, Claude fallback)
+    ai_client = FallbackAIClient(
+        gemini_api_key=(
+            settings.google_api_key.get_secret_value()
+            if settings.google_api_key
+            else None
+        ),
+        claude_api_key=(
+            settings.anthropic_api_key.get_secret_value()
+            if settings.anthropic_api_key
+            else None
+        ),
+    )
+    console.print(
+        f"[green]✓ AI providers: {', '.join(ai_client.available_providers)} "
+        f"(primary: {ai_client.primary_provider})[/green]"
+    )
 
     telegram_bot = TelegramBotHandler(
         bot_token=settings.telegram_bot_token.get_secret_value()
@@ -146,13 +162,39 @@ async def run_auto_mode():
     await init_db()
 
     # Initialize services
-    reddit_reader = RedditReader(settings.reddit)
+    reddit_reader = RedditReader(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret.get_secret_value(),
+        user_agent=settings.reddit_user_agent,
+    )
     await reddit_reader.connect()
 
-    reddit_writer = RedditWriter(settings.reddit)
+    reddit_writer = RedditWriter(
+        client_id=settings.reddit_client_id,
+        client_secret=settings.reddit_client_secret.get_secret_value(),
+        username=settings.reddit_username,
+        password=settings.reddit_password.get_secret_value() if settings.reddit_password else None,
+        user_agent=settings.reddit_user_agent,
+    )
     await reddit_writer.connect()
 
-    ai_client = ClaudeClient(settings.ai)
+    # Initialize AI client with fallback (Gemini primary, Claude fallback)
+    ai_client = FallbackAIClient(
+        gemini_api_key=(
+            settings.google_api_key.get_secret_value()
+            if settings.google_api_key
+            else None
+        ),
+        claude_api_key=(
+            settings.anthropic_api_key.get_secret_value()
+            if settings.anthropic_api_key
+            else None
+        ),
+    )
+    console.print(
+        f"[green]✓ AI providers: {', '.join(ai_client.available_providers)} "
+        f"(primary: {ai_client.primary_provider})[/green]"
+    )
 
     try:
         while True:

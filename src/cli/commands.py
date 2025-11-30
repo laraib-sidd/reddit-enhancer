@@ -319,11 +319,19 @@ async def _check_health():
     try:
         settings = get_settings()
         config_issues = []
+        ai_providers = []
 
         if settings.reddit_client_id == "dummy_client_id":
             config_issues.append("Reddit client ID not configured")
-        if not settings.anthropic_api_key:
-            config_issues.append("Anthropic API key not configured")
+
+        # Check AI providers (at least one required)
+        if settings.gemini_is_configured:
+            ai_providers.append("Gemini (primary)")
+        if settings.claude_is_configured:
+            ai_providers.append("Claude" + (" (fallback)" if settings.gemini_is_configured else " (primary)"))
+
+        if not ai_providers:
+            config_issues.append("No AI provider configured (set GOOGLE_API_KEY or ANTHROPIC_API_KEY)")
         if not settings.telegram_is_configured:
             config_issues.append("Telegram not configured (optional)")
 
@@ -332,6 +340,7 @@ async def _check_health():
             "issues": config_issues if config_issues else ["All required settings configured"],
             "environment": settings.environment,
             "subreddits": settings.subreddits_list,
+            "ai_providers": ai_providers,
         }
     except Exception as e:
         checks["configuration"] = {
@@ -379,9 +388,17 @@ async def _check_health():
     config_table.add_row("Status", config_check.get("status", "Unknown"))
     config_table.add_row("Environment", config_check.get("environment", "Unknown"))
     config_table.add_row("Subreddits", ", ".join(config_check.get("subreddits", [])))
+
+    # Show AI providers
+    ai_providers = config_check.get("ai_providers", [])
+    if ai_providers:
+        config_table.add_row("AI Providers", ", ".join(ai_providers))
+    else:
+        config_table.add_row("AI Providers", "[red]None configured[/red]")
+
     for issue in config_check.get("issues", []):
         if "not configured" in issue.lower():
-            config_table.add_row("⚠️ Warning", f"[yellow]{issue}[/yellow]")
+            config_table.add_row("⚠️", f"[yellow]{issue}[/yellow]")
         else:
             config_table.add_row("✓", issue)
     console.print(config_table)

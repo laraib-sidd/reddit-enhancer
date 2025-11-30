@@ -8,8 +8,18 @@ APP_VERSION = "0.2.0"
 REDDIT_API_RATE_LIMIT = 60  # requests per minute
 REDDIT_USER_AGENT_FORMAT = "python:{app}:v{version} (by /u/{username})"
 
-# AI Generation
-DEFAULT_AI_MODEL = "claude-sonnet-4-5-20250929"  # Latest Claude Sonnet 4.5 (Sept 2025)
+# AI Generation - Gemini (Primary)
+DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"  # Google Gemini 2.0 Flash
+GEMINI_MAX_TOKENS = 300
+GEMINI_TEMPERATURE = 0.7
+
+# AI Generation - Claude (Fallback)
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929"  # Claude Sonnet 4.5 (Sept 2025)
+CLAUDE_MAX_TOKENS = 300
+CLAUDE_TEMPERATURE = 0.7
+
+# Legacy aliases for backwards compatibility
+DEFAULT_AI_MODEL = DEFAULT_CLAUDE_MODEL
 MAX_COMMENT_TOKENS = 300
 AI_TEMPERATURE = 0.7
 

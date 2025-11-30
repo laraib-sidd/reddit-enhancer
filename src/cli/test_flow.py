@@ -7,7 +7,7 @@ from rich.syntax import Syntax
 from src.config.settings import get_settings
 from src.common.logging import get_logger
 from src.infrastructure.reddit.mock import MockRedditClient
-from src.infrastructure.ai.claude_client import ClaudeClient
+from src.infrastructure.ai.fallback_client import FallbackAIClient
 from src.application.use_cases.generate_comment import GenerateCommentUseCase
 from src.infrastructure.database.connection import get_session
 from src.infrastructure.database.repositories import SQLAlchemyPatternRepository
@@ -29,8 +29,24 @@ async def run_test():
     # Initialize mock Reddit client
     reddit_client = MockRedditClient()
 
-    # Initialize real AI client
-    ai_client = ClaudeClient(settings.anthropic_api_key.get_secret_value())
+    # Initialize AI client with fallback (Gemini primary, Claude fallback)
+    ai_client = FallbackAIClient(
+        gemini_api_key=(
+            settings.google_api_key.get_secret_value()
+            if settings.google_api_key
+            else None
+        ),
+        claude_api_key=(
+            settings.anthropic_api_key.get_secret_value()
+            if settings.anthropic_api_key
+            else None
+        ),
+    )
+
+    console.print(
+        f"[dim]AI Providers: {', '.join(ai_client.available_providers)} "
+        f"(primary: {ai_client.primary_provider})[/dim]\n"
+    )
 
     try:
         # Fetch mock posts
@@ -91,5 +107,8 @@ async def run_test():
     console.print("\n[bold green]✓ Test flow complete![/bold green]")
     console.print("\n[dim]This test used:[/dim]")
     console.print("[dim]  • Mock Reddit client (no API calls)[/dim]")
-    console.print("[dim]  • Real Claude AI (actual API calls)[/dim]")
+    console.print(
+        f"[dim]  • AI: {', '.join(ai_client.available_providers)} "
+        f"(primary: {ai_client.primary_provider})[/dim]"
+    )
     console.print("[dim]  • No comments were posted to Reddit[/dim]")

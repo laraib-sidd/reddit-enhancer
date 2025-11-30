@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     reddit_password: SecretStr | None = None
     reddit_user_agent: str | None = None
 
-    # AI settings
-    anthropic_api_key: SecretStr
+    # AI settings (at least one required - Gemini is primary, Claude is fallback)
+    google_api_key: SecretStr | None = None  # Primary: Google Gemini
+    anthropic_api_key: SecretStr | None = None  # Fallback: Anthropic Claude
 
     # Database settings
     db_connection_string: PostgresDsn
@@ -51,6 +52,21 @@ class Settings(BaseSettings):
     def telegram_is_configured(self) -> bool:
         """Check if Telegram is configured."""
         return self.telegram_bot_token is not None and self.telegram_chat_id is not None
+
+    @property
+    def gemini_is_configured(self) -> bool:
+        """Check if Google Gemini is configured."""
+        return self.google_api_key is not None
+
+    @property
+    def claude_is_configured(self) -> bool:
+        """Check if Anthropic Claude is configured."""
+        return self.anthropic_api_key is not None
+
+    @property
+    def ai_is_configured(self) -> bool:
+        """Check if at least one AI provider is configured."""
+        return self.gemini_is_configured or self.claude_is_configured
 
     @property
     def db_async_url(self) -> str:
