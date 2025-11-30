@@ -20,12 +20,12 @@ export function ActivityChart({ data }: ActivityChartProps) {
   return (
     <div className="card p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 p-2.5 border border-purple-500/20">
+        <div className="rounded-xl bg-purple-500/20 p-2.5 border border-purple-500/20">
           <Activity className="h-5 w-5 text-purple-400" />
         </div>
         <div>
-          <h3 className="font-semibold">Activity</h3>
-          <p className="text-sm text-[var(--text-muted)]">Last 7 days</p>
+          <h3 className="font-semibold text-white">Activity</h3>
+          <p className="text-sm text-slate-500">Last 7 days</p>
         </div>
       </div>
       

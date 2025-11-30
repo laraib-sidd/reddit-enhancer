@@ -40,19 +40,19 @@ export function RecentComments({ comments }: RecentCommentsProps) {
   return (
     <div className="card p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 p-2.5 border border-blue-500/20">
+        <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-500/20">
           <MessageSquare className="h-5 w-5 text-blue-400" />
         </div>
         <div>
-          <h3 className="font-semibold">Recent Comments</h3>
-          <p className="text-sm text-[var(--text-muted)]">Latest generated comments</p>
+          <h3 className="font-semibold text-white">Recent Comments</h3>
+          <p className="text-sm text-slate-500">Latest generated comments</p>
         </div>
       </div>
       
       {comments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)]">
+        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
           <MessageSquare className="h-12 w-12 mb-4 opacity-30" />
-          <p className="font-medium">No comments yet</p>
+          <p className="font-medium text-white">No comments yet</p>
           <p className="text-sm">Generated comments will appear here</p>
         </div>
       ) : (
@@ -81,12 +81,12 @@ export function RecentComments({ comments }: RecentCommentsProps) {
                   )}
                 </div>
                 
-                <p className="text-sm text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+                <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
                   {comment.content}
                 </p>
                 
                 {comment.created_at && (
-                  <p className="text-xs text-[var(--text-muted)] mt-3">
+                  <p className="text-xs text-slate-500 mt-3">
                     {new Date(comment.created_at).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
