@@ -2,7 +2,9 @@
  * AI Comment Generation for the Dashboard
  * 
  * Uses Google Gemini API directly from the browser.
- * API key is loaded from environment variable during build.
+ * API key is loaded from root .env file during build (via vite.config.ts).
+ * 
+ * Uses the same GEMINI_API_KEY as the Python bot.
  */
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || ''
