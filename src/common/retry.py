@@ -1,5 +1,6 @@
 """Retry decorators and utilities using tenacity."""
 
+import logging
 from typing import Any, Callable, TypeVar
 from functools import wraps
 
@@ -49,8 +50,8 @@ def retry_on_api_error(
             retry=retry_if_exception_type(
                 (RedditAPIError, AIGenerationError, DatabaseError, ConnectionError)
             ),
-            before_sleep=before_sleep_log(logger, "INFO"),
-            after=after_log(logger, "INFO"),
+            before_sleep=before_sleep_log(logger, logging.INFO),
+            after=after_log(logger, logging.INFO),
         )
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> T:
@@ -62,8 +63,8 @@ def retry_on_api_error(
             retry=retry_if_exception_type(
                 (RedditAPIError, AIGenerationError, DatabaseError, ConnectionError)
             ),
-            before_sleep=before_sleep_log(logger, "INFO"),
-            after=after_log(logger, "INFO"),
+            before_sleep=before_sleep_log(logger, logging.INFO),
+            after=after_log(logger, logging.INFO),
         )
         @wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> T:
@@ -101,8 +102,8 @@ def retry_on_rate_limit(
             stop=stop_after_attempt(max_attempts),
             wait=wait_exponential(multiplier=2, min=min_wait, max=max_wait),
             retry=retry_if_exception_type(RateLimitError),
-            before_sleep=before_sleep_log(logger, "WARNING"),
-            after=after_log(logger, "INFO"),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            after=after_log(logger, logging.INFO),
         )
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> T:
@@ -112,8 +113,8 @@ def retry_on_rate_limit(
             stop=stop_after_attempt(max_attempts),
             wait=wait_exponential(multiplier=2, min=min_wait, max=max_wait),
             retry=retry_if_exception_type(RateLimitError),
-            before_sleep=before_sleep_log(logger, "WARNING"),
-            after=after_log(logger, "INFO"),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            after=after_log(logger, logging.INFO),
         )
         @wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> T:
