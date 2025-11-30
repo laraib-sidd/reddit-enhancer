@@ -54,24 +54,64 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
     setSelectedPost(null)
     
     try {
-      // Clean the URL
+      // Clean the URL - remove ALL query parameters and tracking
       let cleanUrl = url.trim()
+      
+      // Remove everything after ? (query params)
       if (cleanUrl.includes('?')) {
         cleanUrl = cleanUrl.split('?')[0]
       }
-      if (!cleanUrl.endsWith('/')) {
-        cleanUrl = cleanUrl + '/'
+      
+      // Remove trailing slashes for consistency
+      cleanUrl = cleanUrl.replace(/\/+$/, '')
+      
+      // Ensure it's a proper Reddit URL
+      if (!cleanUrl.includes('reddit.com/r/')) {
+        throw new Error('Invalid Reddit URL')
       }
       
-      // Use allorigins CORS proxy to fetch Reddit JSON
+      // Build JSON URL
       const jsonUrl = cleanUrl + '.json'
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(jsonUrl)}`
       
-      const response = await fetch(proxyUrl)
-      if (!response.ok) throw new Error('Failed to fetch')
+      // Try multiple CORS proxies in order
+      const proxies = [
+        (u: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+        (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      ]
       
-      const proxyData = await response.json()
-      const data = JSON.parse(proxyData.contents)
+      let data = null
+      let lastError = null
+      
+      for (const makeProxyUrl of proxies) {
+        try {
+          const proxyUrl = makeProxyUrl(jsonUrl)
+          const response = await fetch(proxyUrl, { 
+            headers: { 'Accept': 'application/json' }
+          })
+          
+          if (!response.ok) continue
+          
+          const responseData = await response.json()
+          
+          // allorigins wraps in { contents: "..." }
+          if (responseData.contents) {
+            data = JSON.parse(responseData.contents)
+          } else if (Array.isArray(responseData)) {
+            data = responseData
+          } else {
+            continue
+          }
+          
+          break // Success!
+        } catch (e) {
+          lastError = e
+          continue
+        }
+      }
+      
+      if (!data) {
+        throw lastError || new Error('All proxies failed')
+      }
       
       // Extract post data from Reddit's response
       const postData = data[0]?.data?.children?.[0]?.data
@@ -86,13 +126,13 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
         created_utc: postData.created_utc,
         permalink: postData.permalink,
         selftext: postData.selftext || '',
-        url: cleanUrl,
+        url: `https://www.reddit.com${postData.permalink}`,
       }
       
       setSelectedPost(post)
     } catch (error) {
       console.error('Failed to fetch post:', error)
-      setFetchError('Could not fetch post. Try again or enter details manually below.')
+      setFetchError('Could not fetch post details. The proxy might be blocked.')
     } finally {
       setFetchingPost(false)
     }
@@ -211,11 +251,40 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                   </div>
                 )}
                 
-                {/* Error state */}
+                {/* Error state with manual fallback */}
                 {fetchError && (
-                  <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-                    <AlertCircle className="h-4 w-4" />
-                    {fetchError}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-400">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      {fetchError} Enter title manually:
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Paste the post title here..."
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
+                      onChange={(e) => {
+                        if (e.target.value.trim()) {
+                          // Extract subreddit from URL
+                          const match = urlInput.match(/reddit\.com\/r\/(\w+)\/comments\/(\w+)/)
+                          const subreddit = match?.[1] || 'unknown'
+                          const postId = match?.[2] || 'custom'
+                          let cleanUrl = urlInput.split('?')[0].replace(/\/+$/, '')
+                          
+                          setSelectedPost({
+                            id: postId,
+                            title: e.target.value.trim(),
+                            subreddit,
+                            score: 0,
+                            num_comments: 0,
+                            created_utc: Date.now() / 1000,
+                            permalink: cleanUrl.replace('https://reddit.com', '').replace('https://www.reddit.com', ''),
+                            selftext: '',
+                            url: cleanUrl,
+                          })
+                          setFetchError('')
+                        }
+                      }}
+                    />
                   </div>
                 )}
                 
