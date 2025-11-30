@@ -1,6 +1,7 @@
 """Async Google Gemini AI client for comment generation."""
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from src.domain.entities import Post, SuccessfulPattern
 from src.infrastructure.ai.prompt_builder import PromptBuilder
@@ -21,6 +22,7 @@ class GeminiClient:
     """
     Google Gemini AI client for generating comments.
 
+    Uses the new google-genai SDK with async support.
     Includes retry logic and circuit breaker for resilience.
     """
 
@@ -37,14 +39,13 @@ class GeminiClient:
         self.temperature = temperature or GEMINI_TEMPERATURE
         self.prompt_builder = PromptBuilder()
 
-        # Configure Gemini API
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(
-            model_name=self.model_name,
-            generation_config=genai.GenerationConfig(
-                max_output_tokens=self.max_tokens,
-                temperature=self.temperature,
-            ),
+        # Initialize the new genai client
+        self.client = genai.Client(api_key=api_key)
+
+        # Build generation config
+        self.generation_config = types.GenerateContentConfig(
+            max_output_tokens=self.max_tokens,
+            temperature=self.temperature,
             system_instruction=self.prompt_builder.build_system_prompt(),
         )
 
@@ -81,7 +82,11 @@ class GeminiClient:
             user_prompt = self.prompt_builder.build_comment_generation_prompt(post, patterns)
 
             # Call Gemini API (async)
-            response = await self.model.generate_content_async(user_prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=user_prompt,
+                config=self.generation_config,
+            )
 
             # Extract text from response
             if not response.text:
@@ -110,4 +115,3 @@ class GeminiClient:
     async def close(self) -> None:
         """Close the client (no-op for Gemini, but maintains interface)."""
         logger.info("ai.gemini.client_closed")
-

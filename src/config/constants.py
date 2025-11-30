@@ -9,8 +9,8 @@ REDDIT_API_RATE_LIMIT = 60  # requests per minute
 REDDIT_USER_AGENT_FORMAT = "python:{app}:v{version} (by /u/{username})"
 
 # AI Generation - Gemini (Primary)
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"  # Google Gemini 2.0 Flash
-GEMINI_MAX_TOKENS = 300
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"  # Google Gemini 2.5 Flash (Latest)
+GEMINI_MAX_TOKENS = 8192  # High limit needed for Gemini 2.5's internal "thinking" tokens
 GEMINI_TEMPERATURE = 0.7
 
 # AI Generation - Claude (Fallback)
