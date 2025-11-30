@@ -15,7 +15,7 @@ Tables:
 import asyncio
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import asyncpg
@@ -28,7 +28,7 @@ load_dotenv()
 # Configuration
 TARGET_SUBREDDITS = [
     "AskReddit",
-    "NoStupidQuestions", 
+    "NoStupidQuestions",
     "explainlikeimfive",
     "TrueOffMyChest",
     "unpopularopinion",
@@ -42,7 +42,8 @@ OUTPUT_PATH = Path("dashboard/public/rising-posts.json")
 
 async def create_table_if_not_exists(conn: asyncpg.Connection) -> None:
     """Create the trending_posts table if it doesn't exist."""
-    await conn.execute("""
+    await conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS reddit_bot.trending_posts (
             id SERIAL PRIMARY KEY,
             reddit_id VARCHAR(20) UNIQUE NOT NULL,
@@ -59,28 +60,35 @@ async def create_table_if_not_exists(conn: asyncpg.Connection) -> None:
             fetched_at TIMESTAMP DEFAULT NOW(),
             is_active BOOLEAN DEFAULT TRUE
         )
-    """)
-    
+    """
+    )
+
     # Create indexes for faster queries
-    await conn.execute("""
+    await conn.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_trending_posts_subreddit 
         ON reddit_bot.trending_posts(subreddit)
-    """)
-    await conn.execute("""
+    """
+    )
+    await conn.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_trending_posts_growth_score 
         ON reddit_bot.trending_posts(growth_score DESC)
-    """)
-    await conn.execute("""
+    """
+    )
+    await conn.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_trending_posts_fetched_at 
         ON reddit_bot.trending_posts(fetched_at DESC)
-    """)
+    """
+    )
 
 
 async def upsert_posts(conn: asyncpg.Connection, posts: list[dict]) -> int:
     """Insert or update posts in the database."""
     if not posts:
         return 0
-    
+
     # Upsert query - update if exists, insert if not
     query = """
         INSERT INTO reddit_bot.trending_posts 
@@ -94,7 +102,7 @@ async def upsert_posts(conn: asyncpg.Connection, posts: list[dict]) -> int:
             fetched_at = NOW(),
             is_active = TRUE
     """
-    
+
     count = 0
     for post in posts:
         try:
@@ -115,26 +123,30 @@ async def upsert_posts(conn: asyncpg.Connection, posts: list[dict]) -> int:
             count += 1
         except Exception as e:
             print(f"  ⚠️ Failed to insert post {post['id']}: {e}")
-    
+
     return count
 
 
 async def deactivate_old_posts(conn: asyncpg.Connection, hours: int = 24) -> int:
     """Mark posts older than X hours as inactive."""
-    result = await conn.execute("""
+    result = await conn.execute(
+        """
         UPDATE reddit_bot.trending_posts 
         SET is_active = FALSE 
         WHERE fetched_at < NOW() - INTERVAL '%s hours'
         AND is_active = TRUE
-    """, hours)
-    
+    """,
+        hours,
+    )
+
     # Extract count from "UPDATE X" result
     return int(result.split()[-1]) if result else 0
 
 
 async def get_active_posts(conn: asyncpg.Connection, limit: int = 50) -> list[dict]:
     """Get active trending posts sorted by growth score."""
-    rows = await conn.fetch("""
+    rows = await conn.fetch(
+        """
         SELECT 
             reddit_id as id,
             title,
@@ -151,46 +163,29 @@ async def get_active_posts(conn: asyncpg.Connection, limit: int = 50) -> list[di
         WHERE is_active = TRUE
         ORDER BY growth_score DESC
         LIMIT $1
-    """, limit)
-    
+    """,
+        limit,
+    )
+
     return [dict(row) for row in rows]
 
 
-async def fetch_subreddit_posts(reddit: asyncpraw.Reddit, subreddit_name: str, limit: int = 10) -> list[dict]:
+async def fetch_subreddit_posts(
+    reddit: asyncpraw.Reddit, subreddit_name: str, limit: int = 10
+) -> list[dict]:
     """Fetch rising and new posts from a subreddit."""
     posts = []
-    
+
     try:
         subreddit = await reddit.subreddit(subreddit_name)
-        
+
         # Fetch rising posts (best for early commenting)
         async for post in subreddit.rising(limit=limit):
             age_minutes = (datetime.now().timestamp() - post.created_utc) / 60
             growth_score = round((post.score / max(age_minutes, 1)) * 100, 1)
-            
-            posts.append({
-                "id": post.id,
-                "title": post.title,
-                "subreddit": subreddit_name,
-                "score": post.score,
-                "num_comments": post.num_comments,
-                "created_utc": post.created_utc,
-                "permalink": post.permalink,
-                "selftext": (post.selftext or "")[:500],  # Truncate long posts
-                "url": f"https://www.reddit.com{post.permalink}",
-                "growth_score": growth_score,
-                "category": "rising",
-            })
-        
-        # Also fetch some new posts (fresher opportunities)
-        async for post in subreddit.new(limit=limit // 2):
-            age_minutes = (datetime.now().timestamp() - post.created_utc) / 60
-            
-            # Only include posts that are getting some traction
-            if post.score >= 5 and age_minutes < 60:
-                growth_score = round((post.score / max(age_minutes, 1)) * 100, 1)
-                
-                posts.append({
+
+            posts.append(
+                {
                     "id": post.id,
                     "title": post.title,
                     "subreddit": subreddit_name,
@@ -198,15 +193,40 @@ async def fetch_subreddit_posts(reddit: asyncpraw.Reddit, subreddit_name: str, l
                     "num_comments": post.num_comments,
                     "created_utc": post.created_utc,
                     "permalink": post.permalink,
-                    "selftext": (post.selftext or "")[:500],
+                    "selftext": (post.selftext or "")[:500],  # Truncate long posts
                     "url": f"https://www.reddit.com{post.permalink}",
                     "growth_score": growth_score,
-                    "category": "new",
-                })
-                
+                    "category": "rising",
+                }
+            )
+
+        # Also fetch some new posts (fresher opportunities)
+        async for post in subreddit.new(limit=limit // 2):
+            age_minutes = (datetime.now().timestamp() - post.created_utc) / 60
+
+            # Only include posts that are getting some traction
+            if post.score >= 5 and age_minutes < 60:
+                growth_score = round((post.score / max(age_minutes, 1)) * 100, 1)
+
+                posts.append(
+                    {
+                        "id": post.id,
+                        "title": post.title,
+                        "subreddit": subreddit_name,
+                        "score": post.score,
+                        "num_comments": post.num_comments,
+                        "created_utc": post.created_utc,
+                        "permalink": post.permalink,
+                        "selftext": (post.selftext or "")[:500],
+                        "url": f"https://www.reddit.com{post.permalink}",
+                        "growth_score": growth_score,
+                        "category": "new",
+                    }
+                )
+
     except Exception as e:
         print(f"  ⚠️ Error fetching from r/{subreddit_name}: {e}")
-    
+
     return posts
 
 
@@ -218,9 +238,9 @@ async def export_to_json(posts: list[dict], output_path: Path) -> None:
         "subreddits": TARGET_SUBREDDITS,
         "posts": posts,
     }
-    
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
 
@@ -229,44 +249,44 @@ async def main():
     """Main function to fetch posts and store in database."""
     print("🚀 Starting Reddit data pipeline...")
     print(f"   Targeting {len(TARGET_SUBREDDITS)} subreddits")
-    
+
     # Get database connection string
     db_url = os.getenv("DB_CONNECTION_STRING")
     if not db_url:
         print("❌ DB_CONNECTION_STRING not set. Exiting.")
         return
-    
+
     # Connect to database
     print("\n📦 Connecting to database...")
     conn = await asyncpg.connect(db_url)
-    
+
     try:
         # Create table if needed
         await create_table_if_not_exists(conn)
         print("   ✅ Table ready")
-        
+
         # Initialize Reddit client
         reddit = asyncpraw.Reddit(
             client_id=os.getenv("REDDIT_CLIENT_ID"),
             client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
             user_agent="RedditEnhancer/1.0 (Data Pipeline)",
         )
-        
+
         # Fetch posts from all subreddits
         all_posts = []
         print("\n📥 Fetching posts from Reddit...")
-        
+
         for subreddit in TARGET_SUBREDDITS:
             print(f"   → r/{subreddit}...", end=" ")
             posts = await fetch_subreddit_posts(reddit, subreddit, POSTS_PER_SUBREDDIT)
             all_posts.extend(posts)
             print(f"found {len(posts)} posts")
-        
+
         await reddit.close()
-        
+
         # Sort by growth score
         all_posts.sort(key=lambda p: p.get("growth_score", 0), reverse=True)
-        
+
         # Deduplicate
         seen_ids = set()
         unique_posts = []
@@ -274,29 +294,29 @@ async def main():
             if post["id"] not in seen_ids:
                 seen_ids.add(post["id"])
                 unique_posts.append(post)
-        
+
         top_posts = unique_posts[:50]
-        
+
         # Store in database
         print(f"\n💾 Storing {len(top_posts)} posts in database...")
         inserted = await upsert_posts(conn, top_posts)
         print(f"   ✅ Upserted {inserted} posts")
-        
+
         # Deactivate old posts
         deactivated = await deactivate_old_posts(conn, hours=24)
         print(f"   🗑️ Deactivated {deactivated} old posts")
-        
+
         # Get active posts from DB for JSON export
         active_posts = await get_active_posts(conn, limit=50)
-        
+
         # Also export to JSON (for static fallback)
         print(f"\n📄 Exporting to {OUTPUT_PATH}...")
         await export_to_json(active_posts, OUTPUT_PATH)
         print(f"   ✅ Exported {len(active_posts)} posts")
-        
-        print(f"\n✨ Pipeline complete!")
+
+        print("\n✨ Pipeline complete!")
         print(f"   Top growth scores: {[p['growth_score'] for p in active_posts[:5]]}")
-        
+
     finally:
         await conn.close()
 

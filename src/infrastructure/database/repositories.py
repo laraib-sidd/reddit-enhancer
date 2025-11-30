@@ -203,9 +203,9 @@ class SQLAlchemyCommentRepository:
             content=CommentText(model.content),
             status=CommentStatus(model.status),
             karma_score=Score(model.karma_score),
-            reddit_comment_id=CommentId(model.reddit_comment_id)
-            if model.reddit_comment_id
-            else None,
+            reddit_comment_id=(
+                CommentId(model.reddit_comment_id) if model.reddit_comment_id else None
+            ),
             posted_at=model.posted_at,
             is_golden_example=model.is_golden_example,
         )
@@ -355,7 +355,8 @@ class SQLAlchemyPatternRepository:
         try:
             # Build search query using PostgreSQL full-text search
             # plainto_tsquery converts text to a search query
-            search_query = sql_text("""
+            search_query = sql_text(
+                """
                 SELECT id, pattern_text, subreddit, score, extracted_at
                 FROM reddit_bot.successful_patterns
                 WHERE (:subreddit IS NULL OR subreddit = :subreddit)
@@ -363,7 +364,8 @@ class SQLAlchemyPatternRepository:
                 ORDER BY ts_rank(to_tsvector('english', pattern_text), plainto_tsquery('english', :search_text)) DESC,
                          score DESC
                 LIMIT :limit
-            """)
+            """
+            )
 
             result = await self.session.execute(
                 search_query,

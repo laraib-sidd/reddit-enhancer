@@ -80,9 +80,9 @@ async def run_manual_mode():
     )
 
     telegram_bot = TelegramBotHandler(
-        bot_token=settings.telegram_bot_token.get_secret_value()
-        if settings.telegram_bot_token
-        else "",
+        bot_token=(
+            settings.telegram_bot_token.get_secret_value() if settings.telegram_bot_token else ""
+        ),
         chat_id=settings.telegram_chat_id or "",
     )
     await telegram_bot.connect()
