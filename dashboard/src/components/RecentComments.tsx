@@ -15,78 +15,71 @@ interface RecentCommentsProps {
 const statusConfig = {
   posted: {
     icon: CheckCircle2,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
-    label: 'Posted'
+    label: 'Posted',
+    className: 'badge-success'
   },
   pending: {
     icon: Clock,
-    color: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
-    label: 'Pending'
+    label: 'Pending',
+    className: 'badge-warning'
   },
   rejected: {
     icon: XCircle,
-    color: 'text-rose-400',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
-    label: 'Rejected'
+    label: 'Rejected',
+    className: 'bg-red-500/15 text-red-400 border border-red-500/20'
   }
 }
 
 export function RecentComments({ comments }: RecentCommentsProps) {
   return (
-    <div className="card p-6">
+    <div className="card p-5">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-500/20">
-          <MessageSquare className="h-5 w-5 text-blue-400" />
+        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+          <MessageSquare className="w-5 h-5 text-blue-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-white">Recent Comments</h3>
-          <p className="text-sm text-slate-500">Latest generated comments</p>
+          <h3 className="text-sm font-semibold text-white">Recent Comments</h3>
+          <p className="text-xs text-zinc-500">Latest generated comments</p>
         </div>
       </div>
       
       {comments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-          <MessageSquare className="h-12 w-12 mb-4 opacity-30" />
-          <p className="font-medium text-white">No comments yet</p>
-          <p className="text-sm">Generated comments will appear here</p>
+        <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
+          <MessageSquare className="w-10 h-10 mb-3 opacity-30" />
+          <p className="text-sm font-medium">No comments yet</p>
+          <p className="text-xs text-zinc-600">Generated comments will appear here</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {comments.map((comment, index) => {
+        <div className="space-y-3">
+          {comments.map((comment) => {
             const status = statusConfig[comment.status as keyof typeof statusConfig] || statusConfig.pending
             const StatusIcon = status.icon
             
             return (
               <div 
                 key={comment.id} 
-                className="rounded-xl bg-white/5 border border-white/5 p-4 transition-all duration-300 hover:bg-white/10 hover:border-white/10"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/50 transition-colors"
               >
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className={`flex items-center gap-2 rounded-lg ${status.bg} ${status.border} border px-2.5 py-1`}>
-                    <StatusIcon className={`h-3.5 w-3.5 ${status.color}`} />
-                    <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
-                  </div>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className={`badge ${status.className}`}>
+                    <StatusIcon className="w-3 h-3" />
+                    {status.label}
+                  </span>
                   
                   {comment.karma_score !== null && comment.karma_score > 0 && (
-                    <div className="flex items-center gap-1.5 text-emerald-400">
-                      <TrendingUp className="h-4 w-4" />
-                      <span className="text-sm font-medium">+{comment.karma_score}</span>
+                    <div className="flex items-center gap-1 text-emerald-400 text-sm font-medium">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      +{comment.karma_score}
                     </div>
                   )}
                 </div>
                 
-                <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                <p className="text-sm text-zinc-300 leading-relaxed line-clamp-2">
                   {comment.content}
                 </p>
                 
                 {comment.created_at && (
-                  <p className="text-xs text-slate-500 mt-3">
+                  <p className="text-xs text-zinc-600 mt-2">
                     {new Date(comment.created_at).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',

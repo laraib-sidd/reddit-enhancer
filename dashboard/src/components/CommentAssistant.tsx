@@ -9,7 +9,8 @@ import {
   AlertCircle,
   ArrowRight,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Wand2
 } from 'lucide-react'
 
 interface RedditPost {
@@ -28,7 +29,6 @@ interface CommentAssistantProps {
   onGenerateComment: (post: RedditPost) => Promise<string>
 }
 
-// CORS proxy for fetching Reddit data
 const CORS_PROXY = 'https://api.allorigins.win/get?url='
 
 export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
@@ -41,7 +41,6 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const [fetchError, setFetchError] = useState('')
   const [copied, setCopied] = useState(false)
 
-  // Fetch post details from Reddit URL
   const fetchPostFromUrl = async (url: string) => {
     setFetchingPost(true)
     setFetchError('')
@@ -49,20 +48,14 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
     
     try {
       let cleanUrl = url.trim().split('?')[0].replace(/\/+$/, '')
-      
-      if (!cleanUrl.includes('reddit.com/r/')) {
-        throw new Error('Invalid Reddit URL')
-      }
+      if (!cleanUrl.includes('reddit.com/r/')) throw new Error('Invalid Reddit URL')
       
       const jsonUrl = cleanUrl + '.json'
-      const proxyUrl = `${CORS_PROXY}${encodeURIComponent(jsonUrl)}`
-      
-      const response = await fetch(proxyUrl)
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent(jsonUrl)}`)
       if (!response.ok) throw new Error('Failed to fetch')
       
       const proxyData = await response.json()
       const data = JSON.parse(proxyData.contents)
-      
       const postData = data[0]?.data?.children?.[0]?.data
       if (!postData) throw new Error('Could not parse post data')
       
@@ -80,9 +73,8 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
       
       setSelectedPost(post)
       setTitleInput(post.title)
-    } catch (error) {
-      console.error('Failed to fetch post:', error)
-      setFetchError('Could not auto-fetch. Enter the title manually below.')
+    } catch {
+      setFetchError('Could not auto-fetch. Enter the title manually.')
     } finally {
       setFetchingPost(false)
     }
@@ -91,7 +83,6 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const handleUrlChange = (url: string) => {
     setUrlInput(url)
     setFetchError('')
-    
     if (/reddit\.com\/r\/\w+\/comments\/\w+/.test(url) && url.length > 30) {
       fetchPostFromUrl(url)
     }
@@ -108,8 +99,7 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
     try {
       const comment = await onGenerateComment(post)
       setGeneratedComment(comment)
-    } catch (error) {
-      console.error('Failed to generate comment:', error)
+    } catch {
       setGeneratedComment('Failed to generate comment. Please try again.')
     } finally {
       setLoadingComment(false)
@@ -141,66 +131,60 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const openInReddit = () => {
-    if (selectedPost) {
-      window.open(selectedPost.url, '_blank')
-    }
-  }
-
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-700 p-8 md:p-12">
-        <div className="absolute inset-0 bg-grid opacity-20" />
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-600 p-8 lg:p-10">
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
         
-        <div className="relative">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm animate-float">
-              <Sparkles className="h-8 w-8 text-white" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <Wand2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-white">Comment Assistant</h1>
+                <p className="text-white/70 text-sm">Generate human-like comments with AI</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Comment Assistant</h1>
-              <p className="text-white/70 mt-1">Generate human-like comments for any Reddit post</p>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-6 text-white/80 text-sm">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-300" />
-              <span>AI-Powered</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-emerald-300" />
-              <span>Human-like Tone</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-blue-300" />
-              <span>Instant Generation</span>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-white/80">
+              <span className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-yellow-300" />
+                AI-Powered
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-emerald-300" />
+                Natural Tone
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-blue-300" />
+                Instant
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Input Panel */}
-        <div className="card p-6 space-y-6">
+      {/* Main Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Input */}
+        <div className="card p-6 space-y-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-500/20">
-              <LinkIcon className="h-5 w-5 text-blue-400" />
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <LinkIcon className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg text-white">Enter Post Details</h2>
-              <p className="text-sm text-slate-500">Paste a Reddit URL or enter manually</p>
+              <h2 className="text-sm font-semibold text-white">Enter Post Details</h2>
+              <p className="text-xs text-zinc-500">Paste a URL or enter manually</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            {/* URL Input */}
             <div>
-              <label className="block text-sm text-slate-500 mb-2">Reddit Post URL</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-2">Reddit Post URL</label>
               <input
                 type="url"
                 value={urlInput}
@@ -210,25 +194,22 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
               />
             </div>
 
-            {/* Fetching State */}
             {fetchingPost && (
-              <div className="flex items-center gap-3 rounded-xl bg-blue-500/10 border border-blue-500/20 p-4">
-                <RefreshCw className="h-5 w-5 text-blue-400 animate-spin" />
-                <span className="text-sm text-blue-400">Fetching post details...</span>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-400">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Fetching post details...
               </div>
             )}
 
-            {/* Fetch Error / Manual Input */}
             {fetchError && (
-              <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
-                <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0" />
-                <span className="text-sm text-amber-400">{fetchError}</span>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {fetchError}
               </div>
             )}
 
-            {/* Title Input */}
             <div>
-              <label className="block text-sm text-slate-500 mb-2">
+              <label className="block text-xs font-medium text-zinc-400 mb-2">
                 Post Title {selectedPost ? '(auto-filled)' : '*'}
               </label>
               <input
@@ -240,23 +221,21 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
               />
             </div>
 
-            {/* Post Preview */}
             {selectedPost && !fetchingPost && (
-              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
-                <div className="flex items-center gap-2 text-xs text-emerald-400 mb-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Post loaded successfully</span>
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 mb-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Post loaded
                 </div>
-                <p className="text-sm font-medium text-white line-clamp-2">{selectedPost.title}</p>
-                <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                  <span className="rounded bg-white/10 px-2 py-0.5">r/{selectedPost.subreddit}</span>
-                  <span>↑ {selectedPost.score}</span>
+                <p className="text-sm text-white font-medium line-clamp-1">{selectedPost.title}</p>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-zinc-500">
+                  <span className="px-1.5 py-0.5 rounded bg-zinc-800">r/{selectedPost.subreddit}</span>
+                  <span>⬆ {selectedPost.score}</span>
                   <span>💬 {selectedPost.num_comments}</span>
                 </div>
               </div>
             )}
 
-            {/* Generate Button */}
             <button
               onClick={handleGenerateComment}
               disabled={!titleInput.trim() || loadingComment || fetchingPost}
@@ -264,124 +243,108 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
             >
               {loadingComment ? (
                 <>
-                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-5 w-5" />
+                  <Sparkles className="w-4 h-4" />
                   Generate Comment
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Output Panel */}
-        <div className="card p-6 space-y-6">
+        {/* Output */}
+        <div className="card p-6 space-y-5">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-purple-500/20 p-2.5 border border-purple-500/20">
-              <Sparkles className="h-5 w-5 text-purple-400" />
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg text-white">Generated Comment</h2>
-              <p className="text-sm text-slate-500">AI-crafted, human-like response</p>
+              <h2 className="text-sm font-semibold text-white">Generated Comment</h2>
+              <p className="text-xs text-zinc-500">AI-crafted response</p>
             </div>
           </div>
 
           {loadingComment ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <div className="flex flex-col items-center justify-center h-56 gap-3">
               <div className="relative">
-                <div className="h-16 w-16 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin" />
-                <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-purple-400" />
+                <div className="w-14 h-14 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
+                <Sparkles className="w-5 h-5 text-purple-400 absolute inset-0 m-auto" />
               </div>
-              <p className="text-slate-500">Crafting your comment...</p>
+              <p className="text-sm text-zinc-500">Crafting your comment...</p>
             </div>
           ) : generatedComment ? (
             <div className="space-y-4">
-              {/* Comment Display */}
-              <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-5">
-                <p className="text-white whitespace-pre-wrap leading-relaxed">
+              <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
+                <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
                   {generatedComment}
                 </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleCopy}
-                  className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
-                    copied
-                      ? 'bg-emerald-500 text-white'
-                      : 'btn-secondary'
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    copied ? 'bg-emerald-500 text-white' : 'btn-secondary'
                   }`}
                 >
-                  {copied ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy
-                    </>
-                  )}
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied!' : 'Copy'}
                 </button>
-                <button
-                  onClick={handleGenerateComment}
-                  className="btn-secondary flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
+                <button onClick={handleGenerateComment} className="btn-secondary flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
                   Regenerate
                 </button>
               </div>
               
               {selectedPost && (
                 <button
-                  onClick={openInReddit}
+                  onClick={() => window.open(selectedPost.url, '_blank')}
                   className="btn-primary w-full flex items-center justify-center gap-2"
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  Open Post in Reddit
+                  <ExternalLink className="w-4 h-4" />
+                  Open in Reddit
                 </button>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 gap-4 text-slate-500">
-              <div className="rounded-full bg-purple-500/10 p-6 border border-purple-500/20">
-                <Sparkles className="h-10 w-10 text-purple-400" />
+            <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-500">
+              <div className="w-14 h-14 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-purple-400" />
               </div>
               <div className="text-center">
-                <p className="font-medium text-white">Ready to Generate</p>
-                <p className="text-sm mt-1">Enter a post URL or title to get started</p>
+                <p className="text-sm font-medium text-white">Ready to Generate</p>
+                <p className="text-xs text-zinc-500">Enter a post URL or title</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Tips Section */}
-      <div className="glass rounded-2xl p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
-          <Zap className="h-5 w-5 text-yellow-400" />
-          Pro Tips
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-slate-400">
-              <span className="font-medium text-white">Comment early</span> on rising posts for maximum visibility and karma.
+      {/* Tips */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="w-4 h-4 text-yellow-400" />
+          <h3 className="text-sm font-semibold text-white">Pro Tips</h3>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+            <p className="text-xs text-zinc-400">
+              <span className="text-white font-medium">Comment early</span> on rising posts for maximum visibility.
             </p>
           </div>
-          <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-slate-400">
-              <span className="font-medium text-white">Edit slightly</span> after copying to add your personal touch.
+          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+            <p className="text-xs text-zinc-400">
+              <span className="text-white font-medium">Edit slightly</span> after copying to add your touch.
             </p>
           </div>
-          <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-slate-400">
-              <span className="font-medium text-white">Regenerate</span> if the first comment doesn't feel right.
+          <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+            <p className="text-xs text-zinc-400">
+              <span className="text-white font-medium">Regenerate</span> if the first comment doesn't fit.
             </p>
           </div>
         </div>

@@ -7,11 +7,9 @@ import {
   Activity,
   RefreshCw,
   Github,
-  Bot,
-  BarChart3,
   Sparkles,
   Zap,
-  ExternalLink
+  ChevronRight
 } from 'lucide-react'
 import { StatsCard } from './components/StatsCard'
 import { ActivityChart } from './components/ActivityChart'
@@ -23,7 +21,7 @@ import {
   demoData,
   type DashboardData,
 } from './lib/data'
-import { generateComment, isAIConfigured } from './lib/ai'
+import { generateComment } from './lib/ai'
 
 type TabType = 'dashboard' | 'assistant'
 
@@ -66,236 +64,198 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#06070a] bg-grid relative">
-      {/* Ambient background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/2 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-      </div>
-
-      {/* Noise overlay */}
-      <div className="noise" />
+    <div className="min-h-screen bg-[#09090b] relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="fixed inset-0 bg-grid pointer-events-none" />
+      <div className="glow-orb w-[500px] h-[500px] bg-purple-600/30 -top-48 -left-48" />
+      <div className="glow-orb w-[400px] h-[400px] bg-violet-600/20 top-1/2 -right-32" />
+      <div className="glow-orb w-[300px] h-[300px] bg-indigo-600/20 -bottom-24 left-1/3" />
 
       {/* Header */}
-      <header className={`sticky top-0 z-50 glass transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl blur opacity-50 group-hover:opacity-75 transition-opacity" />
-                <div className="relative rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 p-2.5">
-                  <Bot className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold gradient-text">Reddit Enhancer</h1>
-                <p className="text-sm text-slate-500">AI-Powered Comment Assistant</p>
-              </div>
+      <header className={`sticky top-0 z-50 glass transition-all duration-300 ${mounted ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg gradient-purple flex items-center justify-center shadow-lg shadow-purple-500/25">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
+            <div>
+              <h1 className="text-base font-semibold text-white">Reddit Enhancer</h1>
+              <p className="text-xs text-zinc-500">AI Comment Assistant</p>
+            </div>
+          </div>
 
-            {/* Navigation */}
-            <div className="flex items-center gap-6">
-              {/* Tab Switcher */}
-              <nav className="relative flex rounded-xl bg-white/5 p-1">
-                <button
-                  onClick={() => setActiveTab('assistant')}
-                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                    activeTab === 'assistant'
-                      ? 'text-white'
-                      : 'text-slate-500 hover:text-white'
-                  }`}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Assistant
-                </button>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                    activeTab === 'dashboard'
-                      ? 'text-white'
-                      : 'text-slate-500 hover:text-white'
-                  }`}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Analytics
-                </button>
-                {/* Animated indicator */}
-                <div 
-                  className="absolute top-1 bottom-1 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 transition-all duration-300"
-                  style={{
-                    left: activeTab === 'assistant' ? '4px' : '50%',
-                    width: 'calc(50% - 8px)',
-                  }}
-                />
-              </nav>
+          {/* Tabs */}
+          <nav className="flex items-center bg-zinc-900/50 rounded-lg p-1 border border-zinc-800">
+            <button
+              onClick={() => setActiveTab('assistant')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'assistant'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Assistant
+            </button>
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'dashboard'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              Analytics
+            </button>
+          </nav>
 
-              {/* Status badges */}
-              <div className="hidden md:flex items-center gap-3">
-                {isDemo && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                    <Zap className="h-3 w-3" />
-                    Demo Mode
-                  </span>
-                )}
-                {!isAIConfigured() && activeTab === 'assistant' && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 border border-purple-500/20">
-                    <Sparkles className="h-3 w-3" />
-                    Demo AI
-                  </span>
-                )}
-              </div>
-
-              {/* Actions */}
-              {activeTab === 'dashboard' && (
-                <button
-                  onClick={loadData}
-                  disabled={loading}
-                  className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-300 disabled:opacity-50 border border-white/5 hover:border-white/10"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
-                </button>
-              )}
-
-              <a
-                href="https://github.com/laraib-sidd/reddit-enhancer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center rounded-xl bg-white/5 p-2.5 text-slate-500 hover:bg-white/10 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/10"
+          {/* Right side */}
+          <div className="flex items-center gap-3">
+            {isDemo && (
+              <span className="badge badge-warning">
+                <Zap className="w-3 h-3" />
+                Demo
+              </span>
+            )}
+            {activeTab === 'dashboard' && (
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors disabled:opacity-50"
               >
-                <Github className="h-5 w-5" />
-              </a>
-            </div>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            )}
+            <a
+              href="https://github.com/laraib-sidd/reddit-enhancer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+            >
+              <Github className="w-5 h-5" />
+            </a>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className={`relative z-10 max-w-7xl mx-auto px-6 py-8 transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
         {activeTab === 'dashboard' ? (
-          <div className={`space-y-8 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white">Analytics Dashboard</h2>
-                <p className="text-slate-500 mt-1">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                  {!isDemo && data.generated_at && (
-                    <span className="ml-2">• Data from: {new Date(data.generated_at).toLocaleString()}</span>
-                  )}
-                </p>
-              </div>
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="animate-fade-in">
+              <h2 className="text-2xl font-bold text-white">Analytics Dashboard</h2>
+              <p className="text-zinc-500 mt-1 text-sm">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </p>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="animate-fade-in stagger-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="animate-fade-in delay-1">
                 <StatsCard
                   title="Posts Scanned"
                   value={stats.totalPosts.toLocaleString()}
                   subtitle="Total processed"
                   icon={Users}
-                  color="indigo"
+                  trend="+12%"
+                  trendUp={true}
                 />
               </div>
-              <div className="animate-fade-in stagger-2">
+              <div className="animate-fade-in delay-2">
                 <StatsCard
-                  title="Comments Generated"
+                  title="Comments"
                   value={stats.totalComments.toLocaleString()}
                   subtitle={`${stats.postedComments} posted`}
                   icon={MessageSquare}
-                  color="emerald"
+                  trend="+8%"
+                  trendUp={true}
                 />
               </div>
-              <div className="animate-fade-in stagger-3">
+              <div className="animate-fade-in delay-3">
                 <StatsCard
                   title="Total Karma"
                   value={stats.totalKarma.toLocaleString()}
-                  subtitle={`Avg: ${stats.avgKarma}/comment`}
+                  subtitle={`${stats.avgKarma} avg`}
                   icon={TrendingUp}
-                  color="amber"
+                  trend="+24%"
+                  trendUp={true}
                 />
               </div>
-              <div className="animate-fade-in stagger-4">
+              <div className="animate-fade-in delay-4">
                 <StatsCard
                   title="Success Rate"
                   value={`${successRate}%`}
                   subtitle={`${stats.pendingComments} pending`}
                   icon={Send}
-                  color="rose"
+                  trend="+5%"
+                  trendUp={true}
                 />
               </div>
             </div>
 
-            {/* Charts Grid */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="animate-fade-in stagger-2">
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="animate-fade-in delay-2">
                 <ActivityChart data={stats.recentActivity} />
               </div>
-              <div className="animate-fade-in stagger-3">
+              <div className="animate-fade-in delay-3">
                 <SubredditBreakdown data={stats.topSubreddits} />
               </div>
             </div>
 
             {/* Recent Comments */}
-            <div className="animate-fade-in stagger-4">
+            <div className="animate-fade-in delay-4">
               <RecentComments comments={comments} />
             </div>
 
             {/* Status Bar */}
-            <div className="glass rounded-2xl p-4 animate-fade-in stagger-5">
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+            <div className="animate-fade-in delay-5 glass rounded-xl p-4">
+              <div className="flex flex-wrap items-center justify-center gap-8 text-sm">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-400" />
-                  <span className="text-slate-500">Anti-Detection: <span className="text-emerald-400">Active</span></span>
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-zinc-400">Anti-Detection</span>
+                  <span className="text-green-400 font-medium">Active</span>
                 </div>
-                <div className="h-4 w-px bg-white/10 hidden sm:block" />
                 <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                  </span>
-                  <span className="text-slate-500">Rate Limit: <span className="text-white">{20 - (stats.postedComments % 20)}/20</span></span>
+                  <span className="text-zinc-400">Rate Limit:</span>
+                  <span className="text-white font-medium">{20 - (stats.postedComments % 20)}/20</span>
                 </div>
-                <div className="h-4 w-px bg-white/10 hidden sm:block" />
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Sparkles className="h-4 w-4 text-purple-400" />
-                  AI: <span className="text-white">Gemini Pro → Flash → Claude</span>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <span className="text-zinc-400">AI:</span>
+                  <span className="text-white font-medium">Gemini Pro</span>
+                  <ChevronRight className="w-3 h-3 text-zinc-600" />
+                  <span className="text-zinc-400">Flash</span>
+                  <ChevronRight className="w-3 h-3 text-zinc-600" />
+                  <span className="text-zinc-400">Claude</span>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className={`transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <CommentAssistant onGenerateComment={handleGenerateComment} />
-          </div>
+          <CommentAssistant onGenerateComment={handleGenerateComment} />
         )}
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-8 mt-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">
-              Reddit Enhancer • Built with{' '}
-              <span className="text-red-400">♥</span>
-              {' '}using Python + React
-            </p>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com/laraib-sidd/reddit-enhancer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-slate-500 hover:text-white transition-colors"
-              >
-                <Github className="h-4 w-4" />
-                View Source
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
+      <footer className="relative z-10 border-t border-zinc-800/50 mt-12">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
+          <p className="text-sm text-zinc-500">
+            Built with <span className="text-red-400">♥</span> using Python + React
+          </p>
+          <a
+            href="https://github.com/laraib-sidd/reddit-enhancer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
+          >
+            View Source
+            <ChevronRight className="w-4 h-4" />
+          </a>
         </div>
       </footer>
     </div>
