@@ -73,7 +73,7 @@ function App() {
               <div className="rounded-lg bg-indigo-500/20 p-2">
                 <Bot className="h-6 w-6 text-indigo-400" />
               </div>
-              <div>
+      <div>
                 <h1 className="text-xl font-bold">Reddit Enhancer</h1>
                 <p className="text-sm text-gray-500">Dashboard & Comment Assistant</p>
               </div>
@@ -132,8 +132,8 @@ function App() {
                 className="rounded-lg bg-white/5 p-2 text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
               >
                 <Github className="h-5 w-5" />
-              </a>
-            </div>
+        </a>
+      </div>
           </div>
         </div>
       </header>
@@ -225,8 +225,8 @@ function App() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
             Reddit Enhancer Bot • Built with 🧡 using Python + React
-          </p>
-        </div>
+        </p>
+      </div>
       </footer>
     </div>
   )

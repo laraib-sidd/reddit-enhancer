@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Generate static JSON data for the dashboard.
 
-This script fetches data from the database and writes it to a JSON file
+This script fetches data from the database and writes it to JSON files
 that the React dashboard can read. Run this during GitHub Actions build.
+
+Outputs:
+    - dashboard/public/data.json - Dashboard stats
+    - dashboard/public/rising-posts.json - Trending posts for Comment Assistant
 
 Usage:
     uv run python scripts/generate_dashboard_data.py
@@ -10,10 +14,12 @@ Usage:
 
 import asyncio
 import json
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from sqlalchemy import select, func
+import asyncpg
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.connection import get_session, init_db
@@ -23,6 +29,17 @@ from src.common.logging import get_logger
 logger = get_logger(__name__)
 
 OUTPUT_PATH = Path("dashboard/public/data.json")
+RISING_POSTS_PATH = Path("dashboard/public/rising-posts.json")
+
+TARGET_SUBREDDITS = [
+    "AskReddit",
+    "NoStupidQuestions", 
+    "explainlikeimfive",
+    "TrueOffMyChest",
+    "unpopularopinion",
+    "LifeProTips",
+    "Showerthoughts",
+]
 
 
 async def fetch_dashboard_data(session: AsyncSession) -> dict:
@@ -116,19 +133,86 @@ async def fetch_dashboard_data(session: AsyncSession) -> dict:
     }
 
 
+async def fetch_trending_posts() -> list[dict]:
+    """Fetch trending posts from database using raw asyncpg."""
+    db_url = os.getenv("DB_CONNECTION_STRING")
+    if not db_url:
+        print("   ⚠️ DB_CONNECTION_STRING not set, skipping trending posts")
+        return []
+    
+    try:
+        conn = await asyncpg.connect(db_url)
+        
+        # Check if table exists
+        exists = await conn.fetchval("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'reddit_bot' 
+                AND table_name = 'trending_posts'
+            )
+        """)
+        
+        if not exists:
+            print("   ⚠️ trending_posts table doesn't exist yet")
+            await conn.close()
+            return []
+        
+        rows = await conn.fetch("""
+            SELECT 
+                reddit_id as id,
+                title,
+                subreddit,
+                score,
+                num_comments,
+                EXTRACT(EPOCH FROM created_utc) as created_utc,
+                permalink,
+                selftext,
+                url,
+                growth_score,
+                category
+            FROM reddit_bot.trending_posts
+            WHERE is_active = TRUE
+            ORDER BY growth_score DESC
+            LIMIT 50
+        """)
+        
+        await conn.close()
+        
+        return [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "subreddit": row["subreddit"],
+                "score": row["score"],
+                "num_comments": row["num_comments"],
+                "created_utc": float(row["created_utc"]) if row["created_utc"] else 0,
+                "permalink": row["permalink"],
+                "selftext": row["selftext"] or "",
+                "url": row["url"],
+                "growth_score": float(row["growth_score"]) if row["growth_score"] else 0,
+                "category": row["category"] or "rising",
+            }
+            for row in rows
+        ]
+        
+    except Exception as e:
+        print(f"   ⚠️ Error fetching trending posts: {e}")
+        return []
+
+
 async def main():
-    """Generate dashboard data JSON."""
+    """Generate dashboard data JSON files."""
     print("📊 Generating dashboard data...")
     
     await init_db()
     
-    async with get_session() as session:
-        data = await fetch_dashboard_data(session)
-    
     # Ensure output directory exists
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     
-    # Write JSON
+    # Generate main dashboard data
+    async with get_session() as session:
+        data = await fetch_dashboard_data(session)
+    
     with open(OUTPUT_PATH, 'w') as f:
         json.dump(data, f, indent=2)
     
@@ -136,6 +220,26 @@ async def main():
     print(f"   - {data['stats']['totalPosts']} posts")
     print(f"   - {data['stats']['totalComments']} comments")
     print(f"   - {data['stats']['totalKarma']} karma")
+    
+    # Generate trending posts data
+    print("\n🔥 Generating trending posts data...")
+    trending_posts = await fetch_trending_posts()
+    
+    if trending_posts:
+        rising_data = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "total_posts": len(trending_posts),
+            "subreddits": TARGET_SUBREDDITS,
+            "posts": trending_posts,
+        }
+        
+        with open(RISING_POSTS_PATH, 'w') as f:
+            json.dump(rising_data, f, indent=2)
+        
+        print(f"✅ Trending posts written to {RISING_POSTS_PATH}")
+        print(f"   - {len(trending_posts)} posts")
+    else:
+        print("   ⚠️ No trending posts found, keeping existing file")
 
 
 if __name__ == "__main__":

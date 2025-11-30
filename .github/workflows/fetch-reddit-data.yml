@@ -1,0 +1,50 @@
+name: Fetch Reddit Data
+
+on:
+  # Run every 30 minutes
+  schedule:
+    - cron: '*/30 * * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Disable by default - enable when ready
+# To enable: remove the 'if: false' line below
+jobs:
+  fetch-posts:
+    if: false  # DISABLED - Remove this line to enable
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Fetch Reddit posts
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+        run: uv run python scripts/fetch_reddit_posts.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add dashboard/public/rising-posts.json
+          git diff --staged --quiet || git commit -m "chore: update rising posts data [skip ci]"
+          git push
+

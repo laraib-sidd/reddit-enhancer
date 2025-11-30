@@ -102,7 +102,7 @@ class RedditWriter:
             await self.reddit.close()
         if self._session:
             await self._session.close()
-        logger.info("reddit_writer.closed")
+            logger.info("reddit_writer.closed")
 
     @retry_on_api_error(max_attempts=3)
     @retry_on_rate_limit(max_attempts=5)

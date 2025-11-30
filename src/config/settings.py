@@ -7,7 +7,7 @@ from src.config.constants import (
     REDDIT_USER_AGENT_FORMAT,
     APP_NAME,
     APP_VERSION,
-)
+    )
 
 
 class Settings(BaseSettings):
@@ -23,15 +23,15 @@ class Settings(BaseSettings):
     # AI settings (at least one required - Gemini is primary, Claude is fallback)
     google_api_key: SecretStr | None = None  # Primary: Google Gemini
     anthropic_api_key: SecretStr | None = None  # Fallback: Anthropic Claude
-
+    
     # Database settings
     db_connection_string: PostgresDsn
-
+    
     # Telegram settings (optional)
     telegram_bot_token: SecretStr | None = None
     telegram_chat_id: str | None = None
-
-    # Bot behavior
+    
+    # Bot behavior  
     target_subreddits: str = Field(default="AskReddit")
     mode_delay_min: int = Field(default=300)
     mode_delay_max: int = Field(default=1800)
@@ -51,12 +51,12 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production."""
         return self.environment.lower() == "production"
-
+    
     @property
     def telegram_is_configured(self) -> bool:
         """Check if Telegram is configured."""
         return self.telegram_bot_token is not None and self.telegram_chat_id is not None
-
+    
     @property
     def gemini_is_configured(self) -> bool:
         """Check if Google Gemini is configured."""
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
         if url_str.startswith("postgresql://"):
             return url_str.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url_str
-
+    
     @property
     def subreddits_list(self) -> list[str]:
         """Get target subreddits as a list."""
@@ -98,7 +98,7 @@ class Settings(BaseSettings):
         if val < 60:
             return val * 60
         return val
-
+    
     @field_validator("reddit_user_agent", mode="before")
     @classmethod
     def generate_user_agent(cls, v: str | None, info) -> str:
