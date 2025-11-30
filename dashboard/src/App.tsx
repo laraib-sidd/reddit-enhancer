@@ -66,7 +66,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] bg-grid relative">
+    <div className="min-h-screen bg-[#06070a] bg-grid relative">
       {/* Ambient background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" />
@@ -78,7 +78,7 @@ function App() {
       <div className="noise" />
 
       {/* Header */}
-      <header className={`sticky top-0 z-50 glass border-b border-white/5 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+      <header className={`sticky top-0 z-50 glass transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -91,7 +91,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-xl font-bold gradient-text">Reddit Enhancer</h1>
-                <p className="text-sm text-[var(--text-muted)]">AI-Powered Comment Assistant</p>
+                <p className="text-sm text-slate-500">AI-Powered Comment Assistant</p>
               </div>
             </div>
 
@@ -104,7 +104,7 @@ function App() {
                   className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     activeTab === 'assistant'
                       ? 'text-white'
-                      : 'text-[var(--text-muted)] hover:text-white'
+                      : 'text-slate-500 hover:text-white'
                   }`}
                 >
                   <Sparkles className="h-4 w-4" />
@@ -115,7 +115,7 @@ function App() {
                   className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     activeTab === 'dashboard'
                       ? 'text-white'
-                      : 'text-[var(--text-muted)] hover:text-white'
+                      : 'text-slate-500 hover:text-white'
                   }`}
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -152,18 +152,18 @@ function App() {
                 <button
                   onClick={loadData}
                   disabled={loading}
-                  className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/10 hover:text-white transition-all duration-300 disabled:opacity-50 border border-white/5 hover:border-white/10"
+                  className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-300 disabled:opacity-50 border border-white/5 hover:border-white/10"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Refresh</span>
-        </button>
+                </button>
               )}
 
               <a
                 href="https://github.com/laraib-sidd/reddit-enhancer"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center rounded-xl bg-white/5 p-2.5 text-[var(--text-muted)] hover:bg-white/10 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/10"
+                className="flex items-center justify-center rounded-xl bg-white/5 p-2.5 text-slate-500 hover:bg-white/10 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/10"
               >
                 <Github className="h-5 w-5" />
               </a>
@@ -179,14 +179,14 @@ function App() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
-                <p className="text-[var(--text-muted)] mt-1">
+                <h2 className="text-2xl font-bold text-white">Analytics Dashboard</h2>
+                <p className="text-slate-500 mt-1">
                   Last updated: {lastUpdated.toLocaleTimeString()}
                   {!isDemo && data.generated_at && (
                     <span className="ml-2">• Data from: {new Date(data.generated_at).toLocaleString()}</span>
                   )}
-        </p>
-      </div>
+                </p>
+              </div>
             </div>
 
             {/* Stats Grid */}
@@ -249,7 +249,7 @@ function App() {
               <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-emerald-400" />
-                  <span className="text-[var(--text-muted)]">Anti-Detection: <span className="text-emerald-400">Active</span></span>
+                  <span className="text-slate-500">Anti-Detection: <span className="text-emerald-400">Active</span></span>
                 </div>
                 <div className="h-4 w-px bg-white/10 hidden sm:block" />
                 <div className="flex items-center gap-2">
@@ -257,10 +257,10 @@ function App() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                   </span>
-                  <span className="text-[var(--text-muted)]">Rate Limit: <span className="text-white">{20 - (stats.postedComments % 20)}/20</span></span>
+                  <span className="text-slate-500">Rate Limit: <span className="text-white">{20 - (stats.postedComments % 20)}/20</span></span>
                 </div>
                 <div className="h-4 w-px bg-white/10 hidden sm:block" />
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <div className="flex items-center gap-2 text-slate-500">
                   <Sparkles className="h-4 w-4 text-purple-400" />
                   AI: <span className="text-white">Gemini Pro → Flash → Claude</span>
                 </div>
@@ -278,7 +278,7 @@ function App() {
       <footer className="relative z-10 border-t border-white/5 py-8 mt-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-[var(--text-muted)]">
+            <p className="text-sm text-slate-500">
               Reddit Enhancer • Built with{' '}
               <span className="text-red-400">♥</span>
               {' '}using Python + React
@@ -288,7 +288,7 @@ function App() {
                 href="https://github.com/laraib-sidd/reddit-enhancer"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-white transition-colors"
               >
                 <Github className="h-4 w-4" />
                 View Source

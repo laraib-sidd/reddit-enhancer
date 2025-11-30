@@ -21,12 +21,12 @@ export function SubredditBreakdown({ data }: SubredditBreakdownProps) {
   return (
     <div className="card p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 p-2.5 border border-emerald-500/20">
+        <div className="rounded-xl bg-emerald-500/20 p-2.5 border border-emerald-500/20">
           <TrendingUp className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
-          <h3 className="font-semibold">Top Subreddits</h3>
-          <p className="text-sm text-[var(--text-muted)]">By posts scanned</p>
+          <h3 className="font-semibold text-white">Top Subreddits</h3>
+          <p className="text-sm text-slate-500">By posts scanned</p>
         </div>
       </div>
       

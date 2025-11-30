@@ -188,25 +188,25 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
         {/* Input Panel */}
         <div className="card p-6 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 p-2.5 border border-blue-500/20">
+            <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-500/20">
               <LinkIcon className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">Enter Post Details</h2>
-              <p className="text-sm text-[var(--text-muted)]">Paste a Reddit URL or enter manually</p>
+              <h2 className="font-semibold text-lg text-white">Enter Post Details</h2>
+              <p className="text-sm text-slate-500">Paste a Reddit URL or enter manually</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* URL Input */}
             <div>
-              <label className="block text-sm text-[var(--text-muted)] mb-2">Reddit Post URL</label>
+              <label className="block text-sm text-slate-500 mb-2">Reddit Post URL</label>
               <input
                 type="url"
                 value={urlInput}
                 onChange={(e) => handleUrlChange(e.target.value)}
                 placeholder="https://reddit.com/r/AskReddit/comments/..."
-                className="input w-full"
+                className="input"
               />
             </div>
 
@@ -228,7 +228,7 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
 
             {/* Title Input */}
             <div>
-              <label className="block text-sm text-[var(--text-muted)] mb-2">
+              <label className="block text-sm text-slate-500 mb-2">
                 Post Title {selectedPost ? '(auto-filled)' : '*'}
               </label>
               <input
@@ -236,7 +236,7 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 placeholder="What's the post about?"
-                className="input w-full"
+                className="input"
               />
             </div>
 
@@ -247,8 +247,8 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                   <CheckCircle2 className="h-4 w-4" />
                   <span>Post loaded successfully</span>
                 </div>
-                <p className="text-sm font-medium line-clamp-2">{selectedPost.title}</p>
-                <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                <p className="text-sm font-medium text-white line-clamp-2">{selectedPost.title}</p>
+                <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
                   <span className="rounded bg-white/10 px-2 py-0.5">r/{selectedPost.subreddit}</span>
                   <span>↑ {selectedPost.score}</span>
                   <span>💬 {selectedPost.num_comments}</span>
@@ -260,7 +260,7 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
             <button
               onClick={handleGenerateComment}
               disabled={!titleInput.trim() || loadingComment || fetchingPost}
-              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full flex items-center justify-center gap-2"
             >
               {loadingComment ? (
                 <>
@@ -281,12 +281,12 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
         {/* Output Panel */}
         <div className="card p-6 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 p-2.5 border border-purple-500/20">
+            <div className="rounded-xl bg-purple-500/20 p-2.5 border border-purple-500/20">
               <Sparkles className="h-5 w-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">Generated Comment</h2>
-              <p className="text-sm text-[var(--text-muted)]">AI-crafted, human-like response</p>
+              <h2 className="font-semibold text-lg text-white">Generated Comment</h2>
+              <p className="text-sm text-slate-500">AI-crafted, human-like response</p>
             </div>
           </div>
 
@@ -296,13 +296,13 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
                 <div className="h-16 w-16 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin" />
                 <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-purple-400" />
               </div>
-              <p className="text-[var(--text-muted)]">Crafting your comment...</p>
+              <p className="text-slate-500">Crafting your comment...</p>
             </div>
           ) : generatedComment ? (
             <div className="space-y-4">
               {/* Comment Display */}
-              <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-5">
-                <p className="text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
+              <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-5">
+                <p className="text-white whitespace-pre-wrap leading-relaxed">
                   {generatedComment}
                 </p>
               </div>
@@ -349,12 +349,12 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 gap-4 text-[var(--text-muted)]">
+            <div className="flex flex-col items-center justify-center h-64 gap-4 text-slate-500">
               <div className="rounded-full bg-purple-500/10 p-6 border border-purple-500/20">
                 <Sparkles className="h-10 w-10 text-purple-400" />
               </div>
               <div className="text-center">
-                <p className="font-medium text-[var(--text-primary)]">Ready to Generate</p>
+                <p className="font-medium text-white">Ready to Generate</p>
                 <p className="text-sm mt-1">Enter a post URL or title to get started</p>
               </div>
             </div>
@@ -364,23 +364,23 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
 
       {/* Tips Section */}
       <div className="glass rounded-2xl p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
+        <h3 className="font-semibold mb-4 flex items-center gap-2 text-white">
           <Zap className="h-5 w-5 text-yellow-400" />
           Pro Tips
         </h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="text-sm text-slate-400">
               <span className="font-medium text-white">Comment early</span> on rising posts for maximum visibility and karma.
             </p>
           </div>
           <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="text-sm text-slate-400">
               <span className="font-medium text-white">Edit slightly</span> after copying to add your personal touch.
             </p>
           </div>
           <div className="rounded-xl bg-white/5 p-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="text-sm text-slate-400">
               <span className="font-medium text-white">Regenerate</span> if the first comment doesn't feel right.
             </p>
           </div>
