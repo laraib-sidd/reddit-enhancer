@@ -44,46 +44,80 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
   const [loadingComment, setLoadingComment] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const [copied, setCopied] = useState(false)
-  const [titleInput, setTitleInput] = useState('')
-  const [contentInput, setContentInput] = useState('')
+  const [fetchingPost, setFetchingPost] = useState(false)
+  const [fetchError, setFetchError] = useState('')
 
-  // Create post object from user inputs
-  const createPostFromInputs = (): RedditPost => {
-    // Extract subreddit from URL
-    const match = urlInput.match(/reddit\.com\/r\/(\w+)\/comments\/(\w+)/)
-    const subreddit = match?.[1] || 'unknown'
-    const postId = match?.[2] || 'custom'
+  // Fetch post details from Reddit URL
+  const fetchPostFromUrl = async (url: string) => {
+    setFetchingPost(true)
+    setFetchError('')
+    setSelectedPost(null)
     
-    // Clean the URL (remove tracking params)
-    let cleanUrl = urlInput.trim()
-    if (cleanUrl.includes('?')) {
-      cleanUrl = cleanUrl.split('?')[0]
+    try {
+      // Clean the URL
+      let cleanUrl = url.trim()
+      if (cleanUrl.includes('?')) {
+        cleanUrl = cleanUrl.split('?')[0]
+      }
+      if (!cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl + '/'
+      }
+      
+      // Use allorigins CORS proxy to fetch Reddit JSON
+      const jsonUrl = cleanUrl + '.json'
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(jsonUrl)}`
+      
+      const response = await fetch(proxyUrl)
+      if (!response.ok) throw new Error('Failed to fetch')
+      
+      const proxyData = await response.json()
+      const data = JSON.parse(proxyData.contents)
+      
+      // Extract post data from Reddit's response
+      const postData = data[0]?.data?.children?.[0]?.data
+      if (!postData) throw new Error('Could not parse post data')
+      
+      const post: RedditPost = {
+        id: postData.id,
+        title: postData.title,
+        subreddit: postData.subreddit,
+        score: postData.score,
+        num_comments: postData.num_comments,
+        created_utc: postData.created_utc,
+        permalink: postData.permalink,
+        selftext: postData.selftext || '',
+        url: cleanUrl,
+      }
+      
+      setSelectedPost(post)
+    } catch (error) {
+      console.error('Failed to fetch post:', error)
+      setFetchError('Could not fetch post. Try again or enter details manually below.')
+    } finally {
+      setFetchingPost(false)
     }
+  }
+
+  // Handle URL input change - auto-fetch when valid Reddit URL is pasted
+  const handleUrlChange = (url: string) => {
+    setUrlInput(url)
     
-    return {
-      id: postId,
-      title: titleInput.trim() || 'Untitled Post',
-      subreddit,
-      score: 0,
-      num_comments: 0,
-      created_utc: Date.now() / 1000,
-      permalink: cleanUrl.replace('https://reddit.com', '').replace('https://www.reddit.com', ''),
-      selftext: contentInput.trim(),
-      url: cleanUrl.startsWith('http') ? cleanUrl : `https://reddit.com${cleanUrl}`,
+    // Check if it's a valid Reddit post URL
+    const isValidUrl = /reddit\.com\/r\/\w+\/comments\/\w+/.test(url)
+    if (isValidUrl && url.length > 30) {
+      fetchPostFromUrl(url)
     }
   }
 
   // Generate comment for the post
   const handleGenerateComment = async () => {
-    if (!urlInput.trim() || !titleInput.trim()) return
+    if (!selectedPost) return
     
-    const post = createPostFromInputs()
-    setSelectedPost(post)
     setLoadingComment(true)
     setGeneratedComment('')
     
     try {
-      const comment = await onGenerateComment(post)
+      const comment = await onGenerateComment(selectedPost)
       setGeneratedComment(comment)
     } catch (error) {
       console.error('Failed to generate comment:', error)
@@ -155,49 +189,62 @@ export function CommentAssistant({ onGenerateComment }: CommentAssistantProps) {
             <>
               <h3 className="mb-4 flex items-center gap-2 font-medium">
                 <LinkIcon className="h-4 w-4 text-blue-400" />
-                Enter Post Details
+                Paste Reddit URL
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-xs text-gray-500">Reddit URL *</label>
+                  <label className="mb-1 block text-xs text-gray-500">Reddit Post URL</label>
                   <input
                     type="url"
                     value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
+                    onChange={(e) => handleUrlChange(e.target.value)}
                     placeholder="https://reddit.com/r/AskReddit/comments/..."
                     className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">Post Title * (copy from Reddit)</label>
-                  <input
-                    type="text"
-                    value={titleInput}
-                    onChange={(e) => setTitleInput(e.target.value)}
-                    placeholder="What's the post asking/about?"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">Post Content (optional - for context)</label>
-                  <textarea
-                    value={contentInput}
-                    onChange={(e) => setContentInput(e.target.value)}
-                    placeholder="Paste the post body text if it has one..."
-                    rows={3}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm placeholder-gray-500 focus:border-purple-500/50 focus:outline-none resize-none"
-                  />
-                </div>
+                
+                {/* Loading state */}
+                {fetchingPost && (
+                  <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-gray-400">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Fetching post details...
+                  </div>
+                )}
+                
+                {/* Error state */}
+                {fetchError && (
+                  <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+                    <AlertCircle className="h-4 w-4" />
+                    {fetchError}
+                  </div>
+                )}
+                
+                {/* Post preview */}
+                {selectedPost && !fetchingPost && (
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-emerald-400">
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5">r/{selectedPost.subreddit}</span>
+                      <span>↑ {selectedPost.score}</span>
+                      <span>💬 {selectedPost.num_comments}</span>
+                    </div>
+                    <p className="text-sm font-medium">{selectedPost.title}</p>
+                    {selectedPost.selftext && (
+                      <p className="mt-2 line-clamp-3 text-xs text-gray-400">{selectedPost.selftext}</p>
+                    )}
+                  </div>
+                )}
+                
                 <button
                   onClick={handleGenerateComment}
-                  disabled={!urlInput.trim() || !titleInput.trim() || loadingComment}
+                  disabled={!selectedPost || loadingComment || fetchingPost}
                   className="w-full rounded-lg bg-purple-500 px-4 py-3 text-sm font-medium text-white hover:bg-purple-600 disabled:opacity-50"
                 >
                   {loadingComment ? 'Generating...' : 'Generate Comment'}
                 </button>
+                
                 <p className="flex items-center gap-1 text-xs text-gray-500">
-                  <AlertCircle className="h-3 w-3" />
-                  Copy URL and title from Reddit for best results
+                  <Sparkles className="h-3 w-3" />
+                  Paste a Reddit URL and post details will be fetched automatically
                 </p>
               </div>
             </>
