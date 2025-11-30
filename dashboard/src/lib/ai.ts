@@ -18,30 +18,40 @@ interface RedditPost {
   num_comments: number
 }
 
-const SYSTEM_PROMPT = `You are a casual Reddit user writing comments. Your comments should:
+const SYSTEM_PROMPT = `You are a casual Reddit user writing a comment. IMPORTANT RULES:
 
-1. Sound like a real person, not an AI
-2. Use lowercase, casual language
-3. Be 1-3 sentences max
-4. Include Reddit-style elements:
-   - Start with lowercase
-   - Use "honestly", "tbh", "ngl", "lol" naturally
-   - Be relatable and conversational
-   - Share a brief personal take or experience
-   - Maybe ask a follow-up question
+1. DIRECTLY respond to the post's question or topic - don't be generic
+2. Sound like a real person chatting, not an AI
+3. Use lowercase and casual language
+4. Be 1-3 sentences, conversational
+5. Share a personal opinion, experience, or take on the SPECIFIC topic
+6. Use natural filler words sparingly: "honestly", "tbh", "ngl", "lol"
+
+CRITICAL - Your comment MUST:
+- Actually answer/address what the post is asking about
+- Be specific to the topic, not a generic response
+- Feel like you actually read and understood the post
 
 DON'T:
-- Be too formal or structured
-- Use bullet points or lists
-- Start with "Great question!" or similar
-- Sound like customer service
-- Be too long or preachy
+- Give generic responses that could fit any post
+- Be formal or use bullet points
+- Start with "Great question!" or "That's interesting!"
+- Sound like customer service or AI
+- Be preachy or give lectures
+- Use phrases like "As someone who..." at the start
 
-Examples of good Reddit comments:
-- "python. ngl i tried java first and wanted to throw my laptop out the window"
-- "tbh the best part about working from home is nobody can see me eating cereal at 2pm"
-- "this happened to me once and i just pretended i didnt see it lol"
-- "honestly surprised this isnt more common. my whole family does this"`
+EXAMPLES:
+Post: "Why do programmers make so much?"
+Good: "their work scales - one person can write code that millions use. plus theres way more demand than supply rn"
+Bad: "honestly thats a great question, ive wondered this too"
+
+Post: "What skill took you forever to learn?"
+Good: "parallel parking lol. took me like 2 years of driving before i could do it without having a panic attack"
+Bad: "there are many skills that take time to learn, its different for everyone"
+
+Post: "ELI5: Why does time go faster as you age?"
+Good: "each year is a smaller % of your total life. when youre 5, a year is 20% of everything youve known. at 50 its just 2%"
+Bad: "time perception is really interesting and varies from person to person"`
 
 export async function generateComment(post: RedditPost): Promise<string> {
   if (!GEMINI_API_KEY) {
@@ -49,13 +59,14 @@ export async function generateComment(post: RedditPost): Promise<string> {
     return generateDemoComment(post)
   }
 
-  const userPrompt = `Write a Reddit comment for this post:
+  const userPrompt = `Write a Reddit comment that DIRECTLY responds to this post:
 
-Subreddit: r/${post.subreddit}
-Title: ${post.title}
-${post.selftext ? `Content: ${post.selftext.slice(0, 500)}` : ''}
+SUBREDDIT: r/${post.subreddit}
+POST TITLE: ${post.title}
+${post.selftext ? `POST CONTENT: ${post.selftext.slice(0, 800)}` : ''}
 
-Write a casual, human-sounding comment (1-3 sentences).`
+Your comment MUST specifically address "${post.title}" - don't give a generic response.
+Write 1-3 casual sentences that show you understood the post.`
 
   try {
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -97,34 +108,15 @@ Write a casual, human-sounding comment (1-3 sentences).`
   }
 }
 
-// Demo comments for when no API key is configured
-function generateDemoComment(post: RedditPost): string {
-  const demoComments: Record<string, string[]> = {
-    'AskReddit': [
-      "honestly this happened to me last week and i still think about it lol",
-      "tbh i never thought about it that way. kinda makes sense tho",
-      "lol my friend does this all the time and we always give him shit for it",
-      "ngl this is the most relatable thing ive seen today",
-    ],
-    'NoStupidQuestions': [
-      "tbh i wondered about this for years before finally googling it",
-      "wait i always thought it was the other way around lol",
-      "honestly the real answer is probably somewhere in between",
-    ],
-    'explainlikeimfive': [
-      "this explanation finally made it click for me tbh",
-      "honestly ive been doing it wrong this whole time lol",
-      "ngl wish someone explained it to me like this years ago",
-    ],
-    'default': [
-      "honestly same. its wild how common this is",
-      "lol this is so accurate it hurts",
-      "tbh i never thought id see someone put this into words so well",
-    ]
-  }
+// When no API key is configured, return a helpful message
+function generateDemoComment(_post: RedditPost): string {
+  return `⚠️ No API key configured. Add GEMINI_API_KEY to your .env file for real AI-generated comments.
 
-  const comments = demoComments[post.subreddit] || demoComments['default']
-  return comments[Math.floor(Math.random() * comments.length)]
+Example comment structure:
+- Start lowercase, be casual
+- Address the specific topic
+- 1-3 sentences max
+- Sound like a real person`
 }
 
 export function isAIConfigured(): boolean {
