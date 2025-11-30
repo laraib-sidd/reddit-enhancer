@@ -1,42 +1,23 @@
 import { useEffect, useState } from 'react'
-import { 
-  MessageSquare, 
-  Send, 
-  TrendingUp, 
-  Users, 
-  Activity,
-  RefreshCw,
-  Github,
-  Bot,
-  BarChart3,
-  Sparkles,
-  Zap,
-  ExternalLink
-} from 'lucide-react'
-import { StatsCard } from './components/StatsCard'
-import { ActivityChart } from './components/ActivityChart'
-import { SubredditBreakdown } from './components/SubredditBreakdown'
-import { RecentComments } from './components/RecentComments'
-import { CommentAssistant } from './components/CommentAssistant'
-import { 
-  fetchDashboardData, 
-  demoData,
-  type DashboardData,
-} from './lib/data'
-import { generateComment, isAIConfigured } from './lib/ai'
+import { fetchDashboardData, demoData, type DashboardData } from './lib/data'
+import { generateComment } from './lib/ai'
 
-type TabType = 'dashboard' | 'assistant'
+type Tab = 'assistant' | 'dashboard'
 
-function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('assistant')
+export default function App() {
+  const [tab, setTab] = useState<Tab>('assistant')
   const [data, setData] = useState<DashboardData>(demoData)
   const [loading, setLoading] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [isDemo, setIsDemo] = useState(true)
-  const [mounted, setMounted] = useState(false)
+
+  // Assistant state
+  const [url, setUrl] = useState('')
+  const [title, setTitle] = useState('')
+  const [comment, setComment] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     loadData()
   }, [])
 
@@ -46,260 +27,549 @@ function App() {
       const result = await fetchDashboardData()
       setData(result.data)
       setIsDemo(result.isDemo)
-      setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
+    } catch (e) {
+      console.error(e)
     } finally {
       setLoading(false)
     }
   }
 
-  const stats = data.stats
-  const comments = data.recentComments
-
-  const successRate = stats.totalComments > 0 
-    ? Math.round((stats.postedComments / stats.totalComments) * 100) 
-    : 0
-
-  const handleGenerateComment = async (post: { title: string; subreddit: string; selftext: string; score: number; num_comments: number }) => {
-    return await generateComment(post)
+  const handleGenerate = async () => {
+    if (!title.trim()) return
+    setGenerating(true)
+    setComment('')
+    try {
+      const result = await generateComment({
+        title,
+        subreddit: '',
+        selftext: '',
+        score: 0,
+        num_comments: 0,
+      })
+      setComment(result)
+    } catch {
+      setComment('Failed to generate. Try again.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(comment)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const stats = data.stats
+  const successRate = stats.totalComments > 0 ? Math.round((stats.postedComments / stats.totalComments) * 100) : 0
+  const avgKarma =
+    typeof stats.avgKarma === 'number'
+      ? stats.avgKarma
+      : Number.isFinite(Number(stats.avgKarma))
+        ? Number(stats.avgKarma)
+        : 0
+  const formattedGeneratedAt = data.generated_at ? new Date(data.generated_at).toLocaleString() : 'Not generated yet'
+  const activityDays = stats.recentActivity ?? []
+  const activityValues = activityDays.map((day) => day.comments ?? 0)
+  const activityMax = activityValues.length ? Math.max(...activityValues) : 1
+  const topSubreddits = stats.topSubreddits ?? []
+  const topSubMax = topSubreddits.length ? topSubreddits[0].count : 1
+  const hasUrl = Boolean(url.trim())
+
+  const assistantHighlights = [
+    { label: 'Success rate', value: `${successRate}%`, hint: 'Manual approvals' },
+    { label: 'Avg karma', value: avgKarma ? avgKarma.toFixed(1) : '0.0', hint: 'Per posted comment' },
+    { label: 'Post library', value: stats.totalPosts.toLocaleString(), hint: 'Posts analysed' },
+  ]
+
+  const heroStats = [
+    { label: 'Posted comments', value: stats.postedComments },
+    { label: 'Pending reviews', value: stats.pendingComments },
+    { label: 'Rejected', value: stats.rejectedComments },
+  ]
+
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] bg-grid relative">
-      {/* Ambient background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-1/2 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+    <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-purple-500/20 blur-[160px]" />
+        <div className="absolute top-24 -left-10 h-60 w-60 rounded-full bg-indigo-500/20 blur-[140px]" />
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #71717a 1px, transparent 0)' }} />
       </div>
 
-      {/* Noise overlay */}
-      <div className="noise" />
-
-      {/* Header */}
-      <header className={`sticky top-0 z-50 glass border-b border-white/5 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl blur opacity-50 group-hover:opacity-75 transition-opacity" />
-                <div className="relative rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 p-2.5">
-                  <Bot className="h-6 w-6 text-white" />
-                </div>
+      <div className="relative z-10">
+        <header className="sticky top-0 z-20 border-b border-white/5 bg-slate-950/80 backdrop-blur-2xl">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 text-lg font-semibold text-white shadow-[0_10px_40px_rgba(67,56,202,0.35)]">
+                RE
               </div>
               <div>
-                <h1 className="text-xl font-bold gradient-text">Reddit Enhancer</h1>
-                <p className="text-sm text-[var(--text-muted)]">AI-Powered Comment Assistant</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-white/60">Command center</p>
+                <p className="text-xl font-semibold">Reddit Enhancer</p>
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="flex items-center gap-6">
-              {/* Tab Switcher */}
-              <nav className="relative flex rounded-xl bg-white/5 p-1">
+            <div className="flex items-center gap-1 rounded-2xl bg-white/5 p-1 text-sm font-medium shadow-[0_10px_40px_rgba(15,23,42,0.4)]">
+              {(['assistant', 'dashboard'] as Tab[]).map((item) => (
                 <button
-                  onClick={() => setActiveTab('assistant')}
-                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                    activeTab === 'assistant'
-                      ? 'text-white'
-                      : 'text-[var(--text-muted)] hover:text-white'
+                  key={item}
+                  onClick={() => setTab(item)}
+                  className={`flex items-center gap-2 rounded-2xl px-4 py-2 transition-all ${
+                    tab === item
+                      ? 'bg-slate-900 text-white shadow-[0_8px_30px_rgba(15,23,42,0.45)]'
+                      : 'text-white/60 hover:text-white'
                   }`}
                 >
-                  <Sparkles className="h-4 w-4" />
-                  Assistant
+                  {item === 'assistant' ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="9" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M4 13h4v7H4zM10 4h4v16h-4zM16 9h4v11h-4z" />
+                    </svg>
+                  )}
+                  <span className="capitalize">{item}</span>
                 </button>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                    activeTab === 'dashboard'
-                      ? 'text-white'
-                      : 'text-[var(--text-muted)] hover:text-white'
-                  }`}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Analytics
-                </button>
-                {/* Animated indicator */}
-                <div 
-                  className="absolute top-1 bottom-1 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 transition-all duration-300"
-                  style={{
-                    left: activeTab === 'assistant' ? '4px' : '50%',
-                    width: 'calc(50% - 8px)',
-                  }}
-                />
-              </nav>
+              ))}
+            </div>
 
-              {/* Status badges */}
-              <div className="hidden md:flex items-center gap-3">
-                {isDemo && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
-                    <Zap className="h-3 w-3" />
-                    Demo Mode
-                  </span>
-                )}
-                {!isAIConfigured() && activeTab === 'assistant' && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 border border-purple-500/20">
-                    <Sparkles className="h-3 w-3" />
-                    Demo AI
-                  </span>
-                )}
-              </div>
-
-              {/* Actions */}
-              {activeTab === 'dashboard' && (
+            <div className="flex flex-col gap-2 text-sm text-white/70 md:flex-row md:items-center md:gap-4">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  isDemo ? 'bg-amber-400/10 text-amber-200' : 'bg-emerald-400/10 text-emerald-200'
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {isDemo ? 'Demo data' : 'Live data'}
+              </span>
+              <p className="text-xs text-white/60">
+                Last sync <span className="text-white">{formattedGeneratedAt}</span>
+              </p>
+              {tab === 'dashboard' && (
                 <button
                   onClick={loadData}
                   disabled={loading}
-                  className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/10 hover:text-white transition-all duration-300 disabled:opacity-50 border border-white/5 hover:border-white/10"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 disabled:opacity-60"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
-        </button>
-              )}
-
-              <a
-                href="https://github.com/laraib-sidd/reddit-enhancer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center rounded-xl bg-white/5 p-2.5 text-[var(--text-muted)] hover:bg-white/10 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/10"
-              >
-                <Github className="h-5 w-5" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {activeTab === 'dashboard' ? (
-          <div className={`space-y-8 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
-                <p className="text-[var(--text-muted)] mt-1">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                  {!isDemo && data.generated_at && (
-                    <span className="ml-2">• Data from: {new Date(data.generated_at).toLocaleString()}</span>
+                  {loading && (
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
                   )}
-        </p>
+                  {loading ? 'Refreshing' : 'Refresh data'}
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl space-y-8 px-6 py-10">
+          {tab === 'assistant' ? (
+            <>
+              <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-600/20 via-purple-500/10 to-transparent px-6 py-7 shadow-[0_40px_120px_rgba(88,46,255,0.25)] backdrop-blur-xl md:px-10">
+                <div className="absolute -right-16 top-1/2 hidden h-40 w-40 -translate-y-1/2 rounded-full bg-white/10 blur-[90px] md:block" />
+                <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-4">
+                    <p className="text-xs uppercase tracking-[0.4em] text-white/70">Comment studio</p>
+                    <h2 className="text-3xl font-semibold leading-tight text-white">
+                      Human-sounding Reddit replies in seconds.
+                    </h2>
+                    <p className="text-sm text-white/70">
+                      Paste a link or title, let the assistant craft a casual, empathetic answer that feels native to the
+                      subreddit.
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs text-white/80">
+                      {['URL cleanup', 'Casual tone', 'Copy-ready'].map((chip) => (
+                        <span key={chip} className="rounded-full bg-white/10 px-3 py-1">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid w-full gap-4 sm:grid-cols-2 md:max-w-md">
+                    {heroStats.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-white/15 bg-white/10 p-4 text-white shadow-[0_20px_60px_rgba(15,23,42,0.4)]"
+                      >
+                        <p className="text-xs uppercase tracking-[0.3em] text-white/50">{item.label}</p>
+                        <p className="mt-2 text-2xl font-semibold">{item.value.toLocaleString()}</p>
+                        <div className="mt-1 h-0.5 w-10 rounded-full bg-white/50" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-2xl">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.4em] text-white/60">Input</p>
+                      <h3 className="text-lg font-semibold text-white">Post canvas</h3>
+                    </div>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">
+                      Step 1
+                    </span>
+                  </div>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                        Reddit URL
+                      </label>
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://reddit.com/r/..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                        Post title *
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="What is the conversation about?"
+                        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                    <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 py-3 text-xs text-white/70">
+                      Coming soon: paste any Reddit URL and we auto-fetch the title & body even from share links.
+                    </div>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={!title.trim() || generating}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_20px_60px_rgba(79,70,229,0.45)] transition hover:from-indigo-400 hover:to-purple-400 disabled:opacity-60"
+                    >
+                      {generating && (
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {generating ? 'Generating...' : 'Generate comment'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.55)] backdrop-blur-2xl">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.4em] text-white/60">Output</p>
+                      <h3 className="text-lg font-semibold text-white">Comment composer</h3>
+                    </div>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">
+                      Step 2
+                    </span>
+                  </div>
+                  {generating ? (
+                    <div className="flex h-48 flex-col items-center justify-center gap-3 text-white/60">
+                      <svg className="h-8 w-8 animate-spin text-indigo-300" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Crafting a natural reply...
+                    </div>
+                  ) : comment ? (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-relaxed text-white/90">
+                        {comment}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          onClick={handleCopy}
+                          className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${
+                            copied
+                              ? 'border-green-400/50 bg-green-500/20 text-green-100'
+                              : 'border-white/15 bg-white/5 text-white hover:border-white/40'
+                          }`}
+                        >
+                          {copied ? (
+                            <>
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                <path d="M8 5h8a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                                <path d="M16 3H8a2 2 0 00-2 2v2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              Copy comment
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleGenerate}
+                          className="flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition hover:border-white/40"
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M4 4v5h.6m14.8 2A8.001 8.001 0 004.6 9M4.6 9H9m11 11v-5h-.6m0 0a8.003 8.003 0 01-15.4-2m15.4 2H15" />
+                          </svg>
+                          Regenerate
+                        </button>
+                      </div>
+                      {hasUrl && (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs text-indigo-200 transition hover:text-white"
+                        >
+                          Open post on Reddit
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M7 17L17 7M7 7h10v10" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-48 flex-col items-center justify-center gap-3 text-white/60">
+                      <svg className="h-10 w-10 text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M8 12h.01M12 12h.01M16 12h.01" strokeLinecap="round" />
+                        <path
+                          d="M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Enter a title to generate a comment.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {assistantHighlights.map((highlight) => (
+                  <div
+                    key={highlight.label}
+                    className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/70 shadow-[0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur-xl"
+                  >
+                    <p className="text-xs uppercase tracking-[0.4em] text-white/50">{highlight.label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-white">{highlight.value}</p>
+                    <p className="text-xs text-white/50">{highlight.hint}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <section className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-600/30 via-purple-500/20 to-slate-900/70 p-8 shadow-[0_50px_150px_rgba(67,56,202,0.4)]">
+                  <div className="absolute inset-y-0 right-0 hidden w-48 bg-white/5 blur-[90px] md:block" />
+                  <div className="relative z-10 flex flex-col gap-8">
+                    <div className="flex flex-col gap-2 text-white">
+                      <p className="text-xs uppercase tracking-[0.4em] text-white/70">Operations overview</p>
+                      <h2 className="text-3xl font-semibold">Live pulse of your Reddit automation</h2>
+                      <p className="text-sm text-white/70">
+                        Monitor success rate, karma impact, and ingestion cadence at a glance.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {[
+                        { label: 'Success rate', value: `${successRate}%`, note: 'Approvals' },
+                        { label: 'Total karma', value: stats.totalKarma.toLocaleString(), note: 'Earned so far' },
+                        { label: 'Avg karma', value: avgKarma ? avgKarma.toFixed(1) : '0.0', note: 'Per post' },
+                      ].map((card) => (
+                        <div key={card.label} className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                          <p className="text-xs uppercase tracking-[0.4em] text-white/60">{card.label}</p>
+                          <p className="mt-2 text-2xl font-semibold">{card.value}</p>
+                          <p className="text-xs text-white/60">{card.note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_90px_rgba(2,6,23,0.5)] backdrop-blur-2xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Data snapshot</h3>
+                      <p className="text-xs text-white/60">Last refresh • {formattedGeneratedAt}</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        isDemo ? 'bg-amber-500/15 text-amber-200' : 'bg-emerald-500/15 text-emerald-200'
+                      }`}
+                    >
+                      {isDemo ? 'Demo mode' : 'Production'}
+                    </span>
+                  </div>
+                  <div className="mt-6 space-y-4 text-sm text-white/70">
+                    <div className="flex items-center justify-between">
+                      <span>Comments queued</span>
+                      <span className="text-white">{stats.pendingComments.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Posts analysed</span>
+                      <span className="text-white">{stats.totalPosts.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Rejected</span>
+                      <span className="text-white/80">{stats.rejectedComments.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    className="mt-6 w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white transition hover:border-white/30 disabled:opacity-60"
+                  >
+                    {loading ? 'Syncing...' : 'Sync now'}
+                  </button>
+                </div>
+              </section>
+
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: 'Posts scanned', value: stats.totalPosts.toLocaleString(), accent: 'from-blue-500/40 via-blue-400/20' },
+                  { label: 'Comments generated', value: stats.totalComments.toLocaleString(), accent: 'from-indigo-500/40 via-indigo-400/20' },
+                  { label: 'Posted', value: stats.postedComments.toLocaleString(), accent: 'from-emerald-500/40 via-emerald-400/20' },
+                  { label: 'Rejected', value: stats.rejectedComments.toLocaleString(), accent: 'from-rose-500/40 via-rose-400/20' },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className={`rounded-2xl border border-white/10 bg-gradient-to-br ${stat.accent} to-slate-900/40 p-4 text-white shadow-[0_20px_70px_rgba(2,6,23,0.45)]`}
+                  >
+                    <p className="text-xs uppercase tracking-[0.4em] text-white/70">{stat.label}</p>
+                    <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+                  </div>
+                ))}
+              </section>
+
+              <section className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_90px_rgba(2,6,23,0.5)] backdrop-blur-2xl">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Activity momentum</h3>
+                      <p className="text-xs text-white/60">Comments over the last 7 days</p>
+                    </div>
+                    <p className="text-xs text-white/60">Peak {activityMax} comments</p>
+                  </div>
+                  {activityDays.length === 0 ? (
+                    <div className="mt-8 rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/60">
+                      No activity yet.
+                    </div>
+                  ) : (
+                    <div className="mt-8 flex h-40 items-end gap-3">
+                      {activityDays.map((day) => {
+                        const comments = day.comments ?? 0
+                        const ratio = Math.max((comments / activityMax) * 100, 4)
+                        return (
+                          <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
+                            <div className="flex h-full w-full items-end rounded-2xl bg-white/5">
+                              <div
+                                className="w-full rounded-2xl bg-gradient-to-t from-indigo-500 via-purple-500 to-cyan-400"
+                                style={{ height: `${ratio}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-white/60">{day.date.slice(5)}</p>
+                            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">{comments} c</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-[0_30px_90px_rgba(2,6,23,0.5)] backdrop-blur-2xl">
+                  <h3 className="text-lg font-semibold text-white">Top subreddits</h3>
+                  <p className="text-xs text-white/60">Where the bot performs best</p>
+                  <div className="mt-6 space-y-4">
+                    {topSubreddits.length === 0 ? (
+                      <p className="text-sm text-white/50">No subreddit data yet.</p>
+                    ) : (
+                      topSubreddits.map((sub) => (
+                        <div key={sub.subreddit}>
+                          <div className="flex items-center justify-between text-sm text-white">
+                            <span>r/{sub.subreddit}</span>
+                            <span className="text-white/70">{sub.count}</span>
+                          </div>
+                          <div className="mt-2 h-2 rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-400 animate-bar"
+                              style={{ width: `${Math.max((sub.count / topSubMax) * 100, 6)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-white/10 bg-white/[0.02] shadow-[0_40px_120px_rgba(2,6,23,0.6)] backdrop-blur-2xl">
+                <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Recent comments</h3>
+                    <p className="text-xs text-white/60">Newest AI drafts and their status</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/60">Live</span>
+                </div>
+                {data.recentComments.length === 0 ? (
+                  <div className="p-8 text-center text-white/60">No comments yet.</div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {data.recentComments.map((c) => (
+                      <div key={c.id} className="px-6 py-5 transition hover:bg-white/5">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              c.status === 'posted'
+                                ? 'bg-emerald-500/15 text-emerald-200'
+                                : c.status === 'pending'
+                                  ? 'bg-amber-500/15 text-amber-200'
+                                  : 'bg-rose-500/15 text-rose-200'
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                          {c.karma_score && c.karma_score > 0 && (
+                            <span className="text-xs text-emerald-200">+{c.karma_score}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-white/80">{c.content}</p>
+                        {c.created_at && (
+                          <p className="mt-2 text-xs text-white/50">{new Date(c.created_at).toLocaleString()}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </main>
+
+        <footer className="border-t border-white/5 px-6 py-6">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between">
+            <span>© {new Date().getFullYear()} Reddit Enhancer</span>
+            <a
+              href="https://github.com/laraib-sidd/reddit-enhancer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-white/70 transition hover:text-white"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                />
+              </svg>
+              GitHub
+            </a>
+          </div>
+        </footer>
       </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="animate-fade-in stagger-1">
-                <StatsCard
-                  title="Posts Scanned"
-                  value={stats.totalPosts.toLocaleString()}
-                  subtitle="Total processed"
-                  icon={Users}
-                  color="indigo"
-                />
-              </div>
-              <div className="animate-fade-in stagger-2">
-                <StatsCard
-                  title="Comments Generated"
-                  value={stats.totalComments.toLocaleString()}
-                  subtitle={`${stats.postedComments} posted`}
-                  icon={MessageSquare}
-                  color="emerald"
-                />
-              </div>
-              <div className="animate-fade-in stagger-3">
-                <StatsCard
-                  title="Total Karma"
-                  value={stats.totalKarma.toLocaleString()}
-                  subtitle={`Avg: ${stats.avgKarma}/comment`}
-                  icon={TrendingUp}
-                  color="amber"
-                />
-              </div>
-              <div className="animate-fade-in stagger-4">
-                <StatsCard
-                  title="Success Rate"
-                  value={`${successRate}%`}
-                  subtitle={`${stats.pendingComments} pending`}
-                  icon={Send}
-                  color="rose"
-                />
-              </div>
-            </div>
-
-            {/* Charts Grid */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="animate-fade-in stagger-2">
-                <ActivityChart data={stats.recentActivity} />
-              </div>
-              <div className="animate-fade-in stagger-3">
-                <SubredditBreakdown data={stats.topSubreddits} />
-              </div>
-            </div>
-
-            {/* Recent Comments */}
-            <div className="animate-fade-in stagger-4">
-              <RecentComments comments={comments} />
-            </div>
-
-            {/* Status Bar */}
-            <div className="glass rounded-2xl p-4 animate-fade-in stagger-5">
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-400" />
-                  <span className="text-[var(--text-muted)]">Anti-Detection: <span className="text-emerald-400">Active</span></span>
-                </div>
-                <div className="h-4 w-px bg-white/10 hidden sm:block" />
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                  </span>
-                  <span className="text-[var(--text-muted)]">Rate Limit: <span className="text-white">{20 - (stats.postedComments % 20)}/20</span></span>
-                </div>
-                <div className="h-4 w-px bg-white/10 hidden sm:block" />
-                <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                  <Sparkles className="h-4 w-4 text-purple-400" />
-                  AI: <span className="text-white">Gemini Pro → Flash → Claude</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className={`transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <CommentAssistant onGenerateComment={handleGenerateComment} />
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-8 mt-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-[var(--text-muted)]">
-              Reddit Enhancer • Built with{' '}
-              <span className="text-red-400">♥</span>
-              {' '}using Python + React
-            </p>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com/laraib-sidd/reddit-enhancer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
-              >
-                <Github className="h-4 w-4" />
-                View Source
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
-
-export default App
