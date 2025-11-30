@@ -9,12 +9,13 @@ import {
   Github,
   Bot,
   BarChart3,
-  Sparkles
+  Sparkles,
+  Zap,
+  ExternalLink
 } from 'lucide-react'
 import { StatsCard } from './components/StatsCard'
 import { ActivityChart } from './components/ActivityChart'
 import { SubredditBreakdown } from './components/SubredditBreakdown'
-import { AIProviderStats } from './components/AIProviderStats'
 import { RecentComments } from './components/RecentComments'
 import { CommentAssistant } from './components/CommentAssistant'
 import { 
@@ -27,11 +28,17 @@ import { generateComment, isAIConfigured } from './lib/ai'
 type TabType = 'dashboard' | 'assistant'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard')
+  const [activeTab, setActiveTab] = useState<TabType>('assistant')
   const [data, setData] = useState<DashboardData>(demoData)
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [isDemo, setIsDemo] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    loadData()
+  }, [])
 
   const loadData = async () => {
     setLoading(true)
@@ -47,10 +54,6 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const stats = data.stats
   const comments = data.recentComments
 
@@ -58,175 +61,242 @@ function App() {
     ? Math.round((stats.postedComments / stats.totalComments) * 100) 
     : 0
 
-  // Handle comment generation
   const handleGenerateComment = async (post: { title: string; subreddit: string; selftext: string; score: number; num_comments: number }) => {
     return await generateComment(post)
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[var(--bg-primary)] bg-grid relative">
+      {/* Ambient background effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute top-1/2 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      </div>
+
+      {/* Noise overlay */}
+      <div className="noise" />
+
       {/* Header */}
-      <header className="border-b border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className={`sticky top-0 z-50 glass border-b border-white/5 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-indigo-500/20 p-2">
-                <Bot className="h-6 w-6 text-indigo-400" />
+            {/* Logo */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl blur opacity-50 group-hover:opacity-75 transition-opacity" />
+                <div className="relative rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 p-2.5">
+                  <Bot className="h-6 w-6 text-white" />
+                </div>
               </div>
-      <div>
-                <h1 className="text-xl font-bold">Reddit Enhancer</h1>
-                <p className="text-sm text-gray-500">Dashboard & Comment Assistant</p>
+              <div>
+                <h1 className="text-xl font-bold gradient-text">Reddit Enhancer</h1>
+                <p className="text-sm text-[var(--text-muted)]">AI-Powered Comment Assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Navigation */}
+            <div className="flex items-center gap-6">
               {/* Tab Switcher */}
-              <div className="flex rounded-lg bg-white/5 p-1">
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    activeTab === 'dashboard'
-                      ? 'bg-white/10 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Dashboard
-                </button>
+              <nav className="relative flex rounded-xl bg-white/5 p-1">
                 <button
                   onClick={() => setActiveTab('assistant')}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     activeTab === 'assistant'
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'text-white'
+                      : 'text-[var(--text-muted)] hover:text-white'
                   }`}
                 >
                   <Sparkles className="h-4 w-4" />
                   Assistant
                 </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`relative z-10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                    activeTab === 'dashboard'
+                      ? 'text-white'
+                      : 'text-[var(--text-muted)] hover:text-white'
+                  }`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </button>
+                {/* Animated indicator */}
+                <div 
+                  className="absolute top-1 bottom-1 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 transition-all duration-300"
+                  style={{
+                    left: activeTab === 'assistant' ? '4px' : '50%',
+                    width: 'calc(50% - 8px)',
+                  }}
+                />
+              </nav>
+
+              {/* Status badges */}
+              <div className="hidden md:flex items-center gap-3">
+                {isDemo && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 border border-amber-500/20">
+                    <Zap className="h-3 w-3" />
+                    Demo Mode
+                  </span>
+                )}
+                {!isAIConfigured() && activeTab === 'assistant' && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 border border-purple-500/20">
+                    <Sparkles className="h-3 w-3" />
+                    Demo AI
+                  </span>
+                )}
               </div>
 
-              {isDemo && activeTab === 'dashboard' && (
-                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
-                  Demo Mode
-                </span>
-              )}
-              {!isAIConfigured() && activeTab === 'assistant' && (
-                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
-                  Demo Comments
-                </span>
-              )}
+              {/* Actions */}
               {activeTab === 'dashboard' && (
                 <button
                   onClick={loadData}
                   disabled={loading}
-                  className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-white/10 hover:text-white transition-all duration-300 disabled:opacity-50 border border-white/5 hover:border-white/10"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
+                  <span className="hidden sm:inline">Refresh</span>
+        </button>
               )}
+
               <a
                 href="https://github.com/laraib-sidd/reddit-enhancer"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-white/5 p-2 text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                className="flex items-center justify-center rounded-xl bg-white/5 p-2.5 text-[var(--text-muted)] hover:bg-white/10 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/10"
               >
                 <Github className="h-5 w-5" />
-        </a>
-      </div>
+              </a>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {activeTab === 'dashboard' ? (
-          <>
-            {/* Last Updated */}
-            <p className="mb-6 text-sm text-gray-500">
-              Last refreshed: {lastUpdated.toLocaleTimeString()}
-              {!isDemo && data.generated_at && (
-                <span className="ml-2">
-                  • Data from: {new Date(data.generated_at).toLocaleString()}
-                </span>
-              )}
-            </p>
+          <div className={`space-y-8 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
+                <p className="text-[var(--text-muted)] mt-1">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                  {!isDemo && data.generated_at && (
+                    <span className="ml-2">• Data from: {new Date(data.generated_at).toLocaleString()}</span>
+                  )}
+        </p>
+      </div>
+            </div>
 
             {/* Stats Grid */}
-            <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
-                title="Posts Scanned"
-                value={stats.totalPosts.toLocaleString()}
-                subtitle="Total processed"
-                icon={Users}
-                color="indigo"
-              />
-              <StatsCard
-                title="Comments Generated"
-                value={stats.totalComments.toLocaleString()}
-                subtitle={`${stats.postedComments} posted`}
-                icon={MessageSquare}
-                color="emerald"
-              />
-              <StatsCard
-                title="Total Karma"
-                value={stats.totalKarma.toLocaleString()}
-                subtitle={`Avg: ${stats.avgKarma}/comment`}
-                icon={TrendingUp}
-                color="amber"
-              />
-              <StatsCard
-                title="Success Rate"
-                value={`${successRate}%`}
-                subtitle={`${stats.pendingComments} pending`}
-                icon={Send}
-                color="rose"
-              />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="animate-fade-in stagger-1">
+                <StatsCard
+                  title="Posts Scanned"
+                  value={stats.totalPosts.toLocaleString()}
+                  subtitle="Total processed"
+                  icon={Users}
+                  color="indigo"
+                />
+              </div>
+              <div className="animate-fade-in stagger-2">
+                <StatsCard
+                  title="Comments Generated"
+                  value={stats.totalComments.toLocaleString()}
+                  subtitle={`${stats.postedComments} posted`}
+                  icon={MessageSquare}
+                  color="emerald"
+                />
+              </div>
+              <div className="animate-fade-in stagger-3">
+                <StatsCard
+                  title="Total Karma"
+                  value={stats.totalKarma.toLocaleString()}
+                  subtitle={`Avg: ${stats.avgKarma}/comment`}
+                  icon={TrendingUp}
+                  color="amber"
+                />
+              </div>
+              <div className="animate-fade-in stagger-4">
+                <StatsCard
+                  title="Success Rate"
+                  value={`${successRate}%`}
+                  subtitle={`${stats.pendingComments} pending`}
+                  icon={Send}
+                  color="rose"
+                />
+              </div>
             </div>
 
             {/* Charts Grid */}
-            <div className="mb-8 grid gap-6 lg:grid-cols-2">
-              <ActivityChart data={stats.recentActivity} />
-              <SubredditBreakdown data={stats.topSubreddits} />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="animate-fade-in stagger-2">
+                <ActivityChart data={stats.recentActivity} />
+              </div>
+              <div className="animate-fade-in stagger-3">
+                <SubredditBreakdown data={stats.topSubreddits} />
+              </div>
             </div>
 
-            {/* Bottom Grid */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <AIProviderStats data={stats.aiProviderUsage} />
+            {/* Recent Comments */}
+            <div className="animate-fade-in stagger-4">
               <RecentComments comments={comments} />
             </div>
 
-            {/* Status Badges */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 rounded-xl border border-white/10 bg-[#1a1a24] p-4">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-emerald-400" />
-                <span className="text-sm text-gray-400">Anti-Detection: Active</span>
-              </div>
-              <div className="h-4 w-px bg-white/10" />
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-sm text-gray-400">
-                  Rate Limit: {20 - (stats.postedComments % 20)}/20 remaining
-                </span>
-              </div>
-              <div className="h-4 w-px bg-white/10" />
-              <div className="text-sm text-gray-400">
-                AI: Gemini Pro → Flash → Claude
+            {/* Status Bar */}
+            <div className="glass rounded-2xl p-4 animate-fade-in stagger-5">
+              <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-emerald-400" />
+                  <span className="text-[var(--text-muted)]">Anti-Detection: <span className="text-emerald-400">Active</span></span>
+                </div>
+                <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                  </span>
+                  <span className="text-[var(--text-muted)]">Rate Limit: <span className="text-white">{20 - (stats.postedComments % 20)}/20</span></span>
+                </div>
+                <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  AI: <span className="text-white">Gemini Pro → Flash → Claude</span>
+                </div>
               </div>
             </div>
-          </>
+          </div>
         ) : (
-          <CommentAssistant onGenerateComment={handleGenerateComment} />
+          <div className={`transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <CommentAssistant onGenerateComment={handleGenerateComment} />
+          </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-6 mt-12">
+      <footer className="relative z-10 border-t border-white/5 py-8 mt-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            Reddit Enhancer Bot • Built with 🧡 using Python + React
-        </p>
-      </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-[var(--text-muted)]">
+              Reddit Enhancer • Built with{' '}
+              <span className="text-red-400">♥</span>
+              {' '}using Python + React
+            </p>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com/laraib-sidd/reddit-enhancer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
+              >
+                <Github className="h-4 w-4" />
+                View Source
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   )
