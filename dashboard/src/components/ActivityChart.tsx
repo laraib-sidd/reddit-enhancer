@@ -1,82 +1,53 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Activity } from 'lucide-react'
 
-interface ActivityData {
-  date: string
-  posts: number
-  comments: number
+interface Props {
+  data: { date: string; posts: number; comments: number }[]
 }
 
-interface ActivityChartProps {
-  data: ActivityData[]
-}
-
-export function ActivityChart({ data }: ActivityChartProps) {
-  const formattedData = data.map(item => ({
-    ...item,
-    day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })
+export function ActivityChart({ data }: Props) {
+  const formatted = data.map(d => ({
+    ...d,
+    day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })
   }))
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-purple-400" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white">Activity</h3>
-            <p className="text-xs text-zinc-500">Last 7 days</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-purple-500" />
-            <span className="text-zinc-400">Comments</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="h-52">
+    <div className="bg-neutral-900 rounded-xl p-5 border border-neutral-800">
+      <h3 className="text-sm font-medium text-white mb-4">Activity (Last 7 Days)</h3>
+      <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={formattedData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <AreaChart data={formatted}>
             <defs>
-              <linearGradient id="colorComments" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a855f7" stopOpacity={0.3}/>
-                <stop offset="100%" stopColor="#a855f7" stopOpacity={0}/>
+              <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis 
               dataKey="day" 
-              axisLine={false}
+              axisLine={false} 
               tickLine={false}
-              tick={{ fill: '#52525b', fontSize: 11 }}
-              dy={10}
+              tick={{ fill: '#737373', fontSize: 12 }}
             />
             <YAxis 
-              axisLine={false}
+              axisLine={false} 
               tickLine={false}
-              tick={{ fill: '#52525b', fontSize: 11 }}
-              dx={-10}
+              tick={{ fill: '#737373', fontSize: 12 }}
+              width={30}
             />
-            <Tooltip 
+            <Tooltip
               contentStyle={{
-                backgroundColor: '#18181b',
-                border: '1px solid #27272a',
+                background: '#171717',
+                border: '1px solid #262626',
                 borderRadius: '8px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                padding: '8px 12px',
+                fontSize: '12px'
               }}
-              labelStyle={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px' }}
-              itemStyle={{ color: '#fafafa', fontSize: '13px', fontWeight: 500 }}
-              cursor={{ stroke: '#3f3f46' }}
             />
-            <Area 
-              type="monotone" 
-              dataKey="comments" 
-              stroke="#a855f7" 
+            <Area
+              type="monotone"
+              dataKey="comments"
+              stroke="#8b5cf6"
               strokeWidth={2}
-              fill="url(#colorComments)" 
+              fill="url(#gradient)"
             />
           </AreaChart>
         </ResponsiveContainer>
